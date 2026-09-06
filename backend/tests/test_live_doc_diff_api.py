@@ -1,0 +1,63 @@
+"""Live doc diff endpoints reject unauthenticated and empty payloads without a database."""
+
+from httpx import ASGITransport, AsyncClient
+
+from app.core.security import get_current_user_id
+from app.main import app
+
+
+async def test_live_doc_diff_routes_require_a_token():
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        assert (await client.get("/api/skills/live-doc-diff/sets")).status_code == 403
+        assert (await client.get("/api/skills/live-doc-diff/unread")).status_code == 403
+        assert (
+            await client.post(
+                "/api/skills/live-doc-diff/sets", json={"name": "Drafts"}
+            )
+        ).status_code == 403
+
+
+async def test_blank_set_name_is_rejected():
+    app.dependency_overrides[get_current_user_id] = lambda: "dev-user"
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/api/skills/live-doc-diff/sets", json={"name": "   "}
+            )
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 422
+
+
+async def test_blank_document_url_is_rejected():
+    app.dependency_overrides[get_current_user_id] = lambda: "dev-user"
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/api/skills/live-doc-diff/sets/00000000-0000-0000-0000-000000000001/documents",
+                json={"sourceUrl": "  "},
+            )
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 422
+
+
+async def test_blank_snapshot_text_is_rejected():
+    app.dependency_overrides[get_current_user_id] = lambda: "dev-user"
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/api/skills/live-doc-diff/documents/00000000-0000-0000-0000-000000000001/snapshots",
+                json={"text": "   "},
+            )
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 422

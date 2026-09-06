@@ -1,0 +1,106 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: loom
+      POSTGRES_PASSWORD: loom
+      POSTGRES_DB: loom
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U loom -d loom"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://loom:loom@postgres:5432/loom
+      REDIS_URL: redis://redis:6379/0
+      CORS_ORIGINS: http://localhost:3000
+      STUB_AUTH_TOKEN: loom-dev-token
+      # Defaults to the offline heuristic classifier. Set AI_PROVIDER=openai and
+      # AI_API_KEY in a local .env to use a real model.
+      AI_PROVIDER: ${AI_PROVIDER:-stub}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.openai.com/v1}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://loom:loom@postgres:5432/loom
+      REDIS_URL: redis://redis:6379/0
+      AI_PROVIDER: ${AI_PROVIDER:-stub}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.openai.com/v1}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        # Waits for the backend so migrations have run before the first write.
+        condition: service_started
+    volumes:
+      - ./backend:/app
+    command: python -m app.worker
+
+  dashboard:
+    build:
+      # Root context: the dashboard imports ../shared, which a ./dashboard
+      # context would leave out of the image.
+      context: .
+      dockerfile: ./dashboard/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      # Server-side only. The dashboard fetches from server components, so the
+      # token is never sent to the browser and needs no NEXT_PUBLIC_ prefix.
+      # Reached over the compose network, not localhost.
+      LOOM_API_URL: http://backend:8000
+      LOOM_API_TOKEN: loom-dev-token
+    depends_on:
+      - backend
+    volumes:
+      - ./dashboard:/app/dashboard
+      - ./shared:/app/shared
+      - /app/dashboard/node_modules
+      - /app/dashboard/.next
+    command: npm run dev
+
+volumes:
+  postgres_data:
+  redis_data:

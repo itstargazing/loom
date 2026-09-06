@@ -1,0 +1,411 @@
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-0: #050505;
+    --bg-1: #0d0d0d;
+    --glass: rgba(255, 255, 255, 0.055);
+    --glass-2: rgba(255, 255, 255, 0.09);
+    --border: rgba(255, 255, 255, 0.14);
+    --border-soft: rgba(255, 255, 255, 0.08);
+    --text: #f2f0ec;
+    --text-dim: #9a988f;
+    --text-faint: #5c5a54;
+    --sheen: rgba(255, 255, 255, 0.18);
+    --loom-background: #050505;
+    --loom-background-secondary: #0d0d0d;
+    --loom-text-primary: #f2f0ec;
+    --loom-text-secondary: #9a988f;
+    --loom-text-faint: #5c5a54;
+    --loom-border: rgba(255, 255, 255, 0.14);
+    --loom-border-soft: rgba(255, 255, 255, 0.08);
+    --loom-accent: #f2f0ec;
+    --loom-hover: #e8e6e0;
+    --loom-success: #c8c6be;
+    --loom-success-muted: rgba(255, 255, 255, 0.08);
+    --loom-warning: #9a988f;
+    --loom-warning-muted: rgba(255, 255, 255, 0.06);
+    --loom-error: #d4d0c8;
+    --loom-error-muted: rgba(255, 255, 255, 0.09);
+    --loom-font-display: "Space Grotesk", system-ui, sans-serif;
+    --loom-font-sans: system-ui, "Segoe UI", sans-serif;
+    --loom-font-mono: "JetBrains Mono", ui-monospace, monospace;
+    --loom-radius-glass: 28px;
+    --loom-transition-fast: 150ms;
+    --loom-transition: 200ms;
+    --loom-transition-slow: 300ms;
+    --sheen-x: 16%;
+    --sheen-y: 0%;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    font-family: var(--loom-font-sans);
+    font-size: 14px;
+    line-height: 1.57;
+    color: var(--text);
+    background-color: var(--bg-0);
+    background-image:
+      radial-gradient(ellipse 70% 50% at 0% 0%, #161616 0%, transparent 58%),
+      radial-gradient(ellipse 55% 45% at 100% 8%, #131313 0%, transparent 52%);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 3px;
+  }
+}
+
+@layer components {
+  .loom-divider {
+    border: none;
+    border-top: 1px solid var(--border-soft);
+  }
+
+  .loom-glass {
+    position: relative;
+    isolation: isolate;
+    overflow: visible;
+    border-radius: var(--loom-radius-glass);
+    background: var(--glass);
+    border: 1px solid var(--border);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 20px 50px rgba(0, 0, 0, 0.35);
+    /*  Blur is costly when stacked; keep it on outer panels only. */
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .loom-glass::before {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    background: radial-gradient(
+      ellipse 80% 55% at var(--sheen-x) var(--sheen-y),
+      var(--sheen),
+      transparent 58%
+    );
+    opacity: 0.35;
+  }
+
+  .loom-glass > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .loom-sheen-tl {
+    --sheen-x: 12%;
+    --sheen-y: -8%;
+  }
+
+  .loom-sheen-tr {
+    --sheen-x: 84%;
+    --sheen-y: 6%;
+  }
+
+  .loom-sheen-mid {
+    --sheen-x: 38%;
+    --sheen-y: 18%;
+  }
+
+  .loom-sheen-bl {
+    --sheen-x: 20%;
+    --sheen-y: 88%;
+  }
+
+  .loom-glass-bright {
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.07),
+      rgba(255, 255, 255, 0.02)
+    );
+  }
+
+  .loom-glass-nested {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .loom-glass-interactive {
+    transition: background-color var(--loom-transition-fast) ease-out;
+  }
+
+  .loom-glass-interactive:hover {
+    background: var(--glass-2);
+  }
+
+  .loom-card {
+    padding: 24px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: var(--loom-radius-glass);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 20px 50px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .loom-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 18px;
+    font-family: var(--loom-font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--bg-0);
+    background-color: var(--text);
+    border: 1px solid var(--text);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color var(--loom-transition-fast) ease-out,
+      border-color var(--loom-transition-fast) ease-out;
+  }
+
+  .loom-btn:hover {
+    background-color: var(--loom-hover);
+    border-color: var(--loom-hover);
+  }
+
+  .loom-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .loom-btn-secondary {
+    color: var(--text);
+    background-color: var(--glass-2);
+    border-color: var(--border);
+  }
+
+  .loom-btn-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-color: var(--border);
+  }
+
+  .loom-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    color: var(--text);
+    background: var(--glass-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color var(--loom-transition-fast) ease-out;
+  }
+
+  .loom-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .loom-input {
+    width: 100%;
+    padding: 8px 12px;
+    font-family: var(--loom-font-mono);
+    font-size: 13px;
+    color: var(--text);
+    background-color: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    transition: border-color var(--loom-transition-fast) ease-out;
+  }
+
+  .loom-input:focus {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+    border-color: var(--border);
+  }
+
+  .loom-input::placeholder {
+    color: var(--text-faint);
+  }
+
+  .loom-input option {
+    background: var(--bg-1);
+    color: var(--text);
+  }
+
+  .loom-checkbox {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    accent-color: var(--text);
+    cursor: pointer;
+  }
+
+  .loom-switch {
+    position: relative;
+    flex-shrink: 0;
+    width: 40px;
+    height: 22px;
+    padding: 0;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color var(--loom-transition-fast) ease-out;
+  }
+
+  .loom-switch::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    background: var(--text-dim);
+    transition: transform var(--loom-transition-fast) ease-out,
+      background-color var(--loom-transition-fast) ease-out;
+  }
+
+  .loom-switch[aria-checked="true"] {
+    background: var(--glass-2);
+  }
+
+  .loom-switch[aria-checked="true"]::after {
+    transform: translateX(18px);
+    background: var(--text);
+  }
+
+  .loom-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    font-family: var(--loom-font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    background: var(--glass-2);
+    border: 1px solid var(--border-soft);
+    border-radius: 999px;
+  }
+
+  .loom-badge-success,
+  .loom-badge-warning,
+  .loom-badge-error {
+    color: var(--text);
+    background: var(--glass-2);
+  }
+
+  .loom-overlay {
+    position: fixed;
+    z-index: 2147483646;
+    padding: 8px 12px;
+    font-family: var(--loom-font-sans);
+    font-size: 12px;
+    color: var(--text);
+    background: var(--glass-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    animation: slide-up 250ms ease-out forwards;
+  }
+
+  .loom-mono {
+    font-family: var(--loom-font-mono);
+  }
+
+  .loom-display {
+    font-family: var(--loom-font-display);
+  }
+
+  .loom-thread {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.35);
+    stroke-width: 1.25;
+    stroke-linecap: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+
+  .loom-thread-dot {
+    fill: rgba(255, 255, 255, 0.45);
+  }
+
+  .loom-spark-a,
+  .loom-spark-b {
+    fill: none;
+    stroke-linecap: round;
+  }
+
+  .loom-spark-a {
+    stroke: rgba(255, 255, 255, 0.28);
+    stroke-width: 1.25;
+  }
+
+  .loom-spark-b {
+    stroke: rgba(255, 255, 255, 0.14);
+    stroke-width: 1;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .loom-thread-a {
+      animation: thread-draw 1.8s ease-out forwards;
+    }
+
+    .loom-thread-b {
+      animation: thread-draw 1.7s ease-out 0.22s forwards;
+    }
+
+    .loom-thread-c {
+      animation: thread-draw 1.9s ease-out 0.44s forwards;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .loom-thread {
+      stroke-dashoffset: 0;
+      opacity: 0.55;
+    }
+  }
+}
+
+@keyframes thread-draw {
+  0% {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  72% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}

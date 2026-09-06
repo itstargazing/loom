@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "LOOM",
+  "version": "0.1.0",
+  "description": "Ambiently capture browsing signals into structured documents.",
+  "action": {
+    "default_popup": "src/popup/index.html",
+    "default_title": "LOOM"
+  },
+  "background": {
+    "service_worker": "src/background/service-worker.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/content-script.ts"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs",
+    "webNavigation",
+    "downloads",
+    "alarms",
+    "idle"
+  ],
+  "host_permissions": ["<all_urls>", "file:///*"],
+  "web_accessible_resources": [
+    {
+      "resources": ["src/pdf/viewer.html", "assets/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

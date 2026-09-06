@@ -1,0 +1,10 @@
+@import "../../../shared/design-system/globals.css";
+
+/* Extension popup is one glass panel, ~320px. */
+body {
+  width: 320px;
+  min-height: 200px;
+  max-height: 580px;
+  overflow-y: auto;
+  padding: 8px;
+}

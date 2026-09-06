@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LOOM PDF Viewer</title>
+    <link rel="stylesheet" href="../styles/globals.css" />
+    <link rel="stylesheet" href="./viewer.css" />
+  </head>
+  <body class="pdf-viewer-body">
+    <div id="form-banner" class="form-banner hidden" role="status">
+      <div class="form-banner__content">
+        <p class="form-banner__title">Fillable PDF</p>
+        <p id="form-banner-text" class="form-banner__text">
+          This document has form fields. Add it to Form Filler to batch-fill from a profile.
+        </p>
+        <div class="form-banner__actions">
+          <button id="form-banner-add" type="button" class="loom-btn">
+            Add to Form Filler
+          </button>
+          <a id="form-banner-link" class="loom-btn loom-btn-secondary hidden" href="#">
+            Open Form Filler
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div id="fallback-banner" class="fallback-banner hidden" role="alert">
+      <div class="fallback-banner__content">
+        <p class="fallback-banner__title">Using Chrome's default PDF viewer</p>
+        <p class="fallback-banner__text">
+          LOOM could not render this file with its custom viewer. Content capture will not
+          work for this document.
+        </p>
+        <p id="fallback-reason" class="fallback-banner__reason"></p>
+        <a id="fallback-link" class="loom-btn loom-btn-secondary fallback-banner__link" href="#">
+          Open in Chrome viewer
+        </a>
+      </div>
+    </div>
+
+    <header id="toolbar" class="pdf-toolbar">
+      <div class="pdf-toolbar__group">
+        <button id="btn-prev" type="button" class="toolbar-btn" title="Previous page" disabled>
+          ‹
+        </button>
+        <span id="page-indicator" class="page-indicator loom-mono">—</span>
+        <button id="btn-next" type="button" class="toolbar-btn" title="Next page" disabled>
+          ›
+        </button>
+      </div>
+
+      <div class="pdf-toolbar__group pdf-toolbar__title">
+        <span id="doc-title" class="doc-title">Loading…</span>
+      </div>
+
+      <div class="pdf-toolbar__group">
+        <button id="btn-zoom-out" type="button" class="toolbar-btn" title="Zoom out">−</button>
+        <span id="zoom-indicator" class="zoom-indicator loom-mono">125%</span>
+        <button id="btn-zoom-in" type="button" class="toolbar-btn" title="Zoom in">+</button>
+        <button id="btn-fit-width" type="button" class="toolbar-btn toolbar-btn--text" title="Fit width">
+          Fit width
+        </button>
+      </div>
+    </header>
+
+    <main id="viewer" class="pdf-viewer" aria-label="PDF document">
+      <div id="loading" class="pdf-loading">
+        <p>Loading document…</p>
+      </div>
+      <div id="page-container" class="pdf-page-container hidden"></div>
+    </main>
+
+    <script type="module" src="./viewer.ts"></script>
+  </body>
+</html>

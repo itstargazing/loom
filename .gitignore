@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+*.egg-info/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Extension build
+extension/dist/
+
+# Python
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Local user-space Postgres/Redis data (dev workaround when Docker is unavailable)
+.local/
+
+# Uploaded PDF forms for the batch filler
+backend/.data/
