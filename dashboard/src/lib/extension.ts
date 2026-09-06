@@ -14,7 +14,7 @@ import {
   type BridgeRequestType,
   type BridgeSyncOutcome,
   type BridgeSyncStatus,
-} from "../../../shared/bridge/dashboard-protocol";
+} from "../../shared/bridge/dashboard-protocol";
 
 export type { BridgeSyncOutcome, BridgeSyncStatus };
 
