@@ -18,7 +18,7 @@ from app.ai import AIClient
 from app.core.config import settings
 from app.models.skill_stores import Contradiction, ContradictionClaim
 from app.services.contradiction_cluster import ClaimRef, cluster_by_topic
-from app.services.contradiction_compare import ComparisonInput, compare_claims
+from app.services.contradiction_compare import ComparisonInput, compare_claims, compare_locally
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +33,61 @@ def _canonical_pair(
     if str(left.id) <= str(right.id):
         return left, right
     return right, left
+
+
+def _evidence(
+    side_a: ContradictionClaim,
+    side_b: ContradictionClaim,
+    cluster_claims: list[ContradictionClaim],
+) -> tuple[int, int, list[dict]]:
+    """Count-based support. Does not decide which side is true."""
+    evidence: list[dict] = []
+    agree_a = 0
+    agree_b = 0
+    for claim in cluster_claims:
+        if claim.id == side_a.id:
+            stance = "side_a"
+            agree_a += 1
+        elif claim.id == side_b.id:
+            stance = "side_b"
+            agree_b += 1
+        else:
+            vs_a = compare_locally(
+                ComparisonInput(
+                    topic=side_a.topic,
+                    claim_a=side_a.claim,
+                    claim_b=claim.claim,
+                    source_a_url=side_a.source_url,
+                    source_b_url=claim.source_url,
+                )
+            )
+            vs_b = compare_locally(
+                ComparisonInput(
+                    topic=side_b.topic,
+                    claim_a=side_b.claim,
+                    claim_b=claim.claim,
+                    source_a_url=side_b.source_url,
+                    source_b_url=claim.source_url,
+                )
+            )
+            if vs_a.conflicts and not vs_b.conflicts:
+                stance = "side_b"
+                agree_b += 1
+            elif vs_b.conflicts and not vs_a.conflicts:
+                stance = "side_a"
+                agree_a += 1
+            else:
+                stance = "unaligned"
+        evidence.append(
+            {
+                "claim": claim.claim,
+                "sourceUrl": claim.source_url,
+                "pageTitle": claim.page_title,
+                "stance": stance,
+                "excerpt": claim.claim[:280],
+            }
+        )
+    return agree_a, agree_b, evidence
 
 
 def _host(url: str) -> str:
@@ -138,6 +193,9 @@ async def flag_conflicts_for_user(
                 if not comparison.conflicts or comparison.confidence < MIN_CONFIDENCE_TO_FLAG:
                     continue
 
+                cluster_rows = [by_id[member.id] for member in cluster]
+                agree_a, agree_b, evidence = _evidence(claim_a, claim_b, cluster_rows)
+
                 stmt = (
                     insert(Contradiction)
                     .values(
@@ -152,6 +210,9 @@ async def flag_conflicts_for_user(
                         dismissed=False,
                         claim_a_id=claim_a.id,
                         claim_b_id=claim_b.id,
+                        agree_count=agree_a,
+                        disagree_count=agree_b,
+                        evidence=evidence,
                     )
                     .on_conflict_do_update(
                         constraint="uq_contradictions_pair",
@@ -162,7 +223,9 @@ async def flag_conflicts_for_user(
                             "source_a_url": claim_a.source_url,
                             "source_b_url": claim_b.source_url,
                             "explanation": comparison.explanation.strip(),
-                            #  Never undismiss on conflict — the user already said no.
+                            "agree_count": agree_a,
+                            "disagree_count": agree_b,
+                            "evidence": evidence,
                             "dismissed": Contradiction.__table__.c.dismissed,
                         },
                     )

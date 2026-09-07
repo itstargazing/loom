@@ -53,6 +53,17 @@ SCHEMA_TO_INTERFACE = {
     "LocalModeCheckOut": "LocalModeCheck",
     "AccountOut": "Account",
     "LogoutOut": "LogoutResult",
+    "DigestOut": "Digest",
+    "DigestCardOut": "DigestCard",
+    "DigestGroupOut": "DigestGroup",
+    "AskAnswerOut": "AskAnswer",
+    "AskCitationOut": "AskCitation",
+    "TrailOut": "Trail",
+    "TrailNodeOut": "TrailNode",
+    "TrailEdgeOut": "TrailEdge",
+    "BriefOut": "Brief",
+    "NotificationOut": "NotificationItem",
+    "NotificationListOut": "NotificationList",
 }
 
 #  Backend read models the dashboard does not surface yet. Listing them means a

@@ -16,7 +16,7 @@ export function PageHeader({
       <div>
         <h1 className="loom-display font-display text-xl font-semibold tracking-tight">{title}</h1>
         {description ? (
-          <p className="mt-1 max-w-2xl text-sm text-text-secondary">{description}</p>
+          <p className="mt-1 text-sm text-text-secondary">{description}</p>
         ) : null}
       </div>
       {actions ? <div className="shrink-0">{actions}</div> : null}

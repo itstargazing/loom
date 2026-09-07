@@ -30,7 +30,7 @@ export default async function OverviewPage() {
   });
 
   return (
-    <div className="mx-auto flex w-full max-w-[920px] flex-col gap-md">
+    <div className="flex w-full flex-col gap-lg">
       {!overview.ok ? (
         <ErrorPanel title="Could not load dashboard data" error={overview.error} />
       ) : null}

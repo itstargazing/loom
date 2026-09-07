@@ -30,7 +30,17 @@ const SUGGESTED_KEYS = [
 
 async function readError(response: Response): Promise<string> {
   const body = await response.json().catch(() => ({}));
-  if (typeof body.detail === "string") return body.detail;
+  const detail = body && typeof body === "object" ? (body as { detail?: unknown }).detail : undefined;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const parts = detail.map((item) => {
+      if (item && typeof item === "object" && "msg" in item) {
+        return String((item as { msg: unknown }).msg);
+      }
+      return String(item);
+    });
+    if (parts.length) return parts.join("; ");
+  }
   return `Request failed (${response.status})`;
 }
 
@@ -73,6 +83,7 @@ export function FormFillerBrowser({
   const [profiles, setProfiles] = useState(initialProfiles);
   const [documents, setDocuments] = useState(initialDocuments);
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const [profileName, setProfileName] = useState("Personal");
   const [profileRows, setProfileRows] = useState<Array<{ key: string; value: string }>>([
@@ -180,25 +191,38 @@ export function FormFillerBrowser({
   async function uploadFiles(fileList: FileList | null) {
     if (!fileList || fileList.length === 0) return;
     setError(null);
+    setUploading(true);
+    const emptyFieldNames: string[] = [];
     try {
       for (const file of Array.from(fileList)) {
+        if (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf") {
+          throw new Error(`${file.name} is not a PDF`);
+        }
         const form = new FormData();
-        form.append("file", file);
+        form.append("file", file, file.name);
         const response = await fetch("/api/proxy/skills/form-filler/documents", {
           method: "POST",
           body: form,
         });
         if (!response.ok) throw new Error(await readError(response));
         const created = (await response.json()) as FormDocument;
+        if (created.fieldCount === 0) emptyFieldNames.push(created.filename);
         setDocuments((current) => [created, ...current.filter((row) => row.id !== created.id)]);
         setSelectedDocIds((current) =>
           current.includes(created.id) ? current : [...current, created.id],
         );
       }
       setMatches([]);
+      if (emptyFieldNames.length) {
+        setError(
+          `${emptyFieldNames.join(", ")} ${emptyFieldNames.length === 1 ? "has" : "have"} no fillable fields. Stored for Auto-Attach, but Form Filler cannot map profile values onto ${emptyFieldNames.length === 1 ? "it" : "them"}.`,
+        );
+      }
       refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not upload PDF");
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -408,19 +432,26 @@ export function FormFillerBrowser({
       </Section>
 
       <Section title="Documents">
-        <label className="flex flex-col gap-1 text-xs text-text-secondary">
-          Upload fillable PDFs
-          <input
-            className="loom-input"
-            type="file"
-            accept="application/pdf,.pdf"
-            multiple
-            onChange={(event) => {
-              void uploadFiles(event.target.files);
-              event.target.value = "";
-            }}
-          />
-        </label>
+        <div className="flex flex-col gap-sm">
+          <label className="loom-btn loom-btn-secondary w-fit cursor-pointer">
+            {uploading ? "Uploading…" : "Upload PDF"}
+            <input
+              className="sr-only"
+              type="file"
+              accept="application/pdf,.pdf"
+              multiple
+              disabled={uploading}
+              onChange={(event) => {
+                void uploadFiles(event.target.files);
+                event.target.value = "";
+              }}
+            />
+          </label>
+          <p className="text-xs text-text-secondary">
+            Standard fillable PDFs (AcroForm) can be matched to a profile. Scanned or flattened
+            PDFs still upload; they just will not auto-fill.
+          </p>
+        </div>
         {documents.length === 0 ? (
           <EmptyState>
             Upload PDFs here, or open a fillable PDF in the LOOM viewer and choose Add to Form
@@ -440,7 +471,9 @@ export function FormFillerBrowser({
                   <span>
                     <span className="font-medium">{document.filename}</span>
                     <span className="mt-1 block text-xs text-text-secondary">
-                      {document.fieldCount} fields
+                      {document.fieldCount === 0
+                        ? "No fillable fields"
+                        : `${document.fieldCount} fields`}
                       {document.sourceUrl ? ` · ${document.sourceUrl}` : ""}
                       {" · "}
                       <RelativeTime iso={document.createdAt} />

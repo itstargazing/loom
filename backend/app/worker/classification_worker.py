@@ -9,7 +9,9 @@ from app.core.config import settings
 from app.core.database import async_session_factory
 from app.core.streams import StreamEntry
 from app.models.privacy import UserPrivacySettings
-from app.services.classification import classify_event
+from app.services.capture_text import capture_snippet
+from app.services.classification import ClassificationOutcome, classify_event
+from app.services.classification_cache import cache_key, get_cached_result, set_cached_result
 from app.services.classification_queue import classification_stream, parse_entry
 from app.services.classification_store import (
     already_handled,
@@ -17,6 +19,7 @@ from app.services.classification_store import (
     mark_routed,
     record_outcome,
 )
+from app.services.embeddings import upsert_embedding
 from app.services.skill_router import (
     RoutingContext,
     RoutingOutcome,
@@ -74,23 +77,43 @@ async def classify_and_route(capture_event_id: UUID, queued_user_id: str) -> boo
     ]
     use_local = matches_local_domain(event.source_url, domain_patterns)
     client = get_local_ai_client() if use_local else get_ai_client()
-    if use_local:
-        logger.info(
-            "Classifying %s in local mode (no cloud AI) for %s",
-            capture_event_id,
-            event.source_url,
+    snippet = capture_snippet(event.event_type, event.payload)
+    cached = None if use_local else await get_cached_result(
+        cache_key(user_id=owner, event_type=event.event_type, snippet=snippet)
+    )
+    if cached is not None:
+        outcome = ClassificationOutcome(
+            result=cached,
+            attempts=0,
+            provider="cache",
+            model="redis",
+            latency_ms=0,
+            error=None,
+            raw_text=cached.model_dump_json(),
+            cached=True,
         )
-
-    # Deliberately outside a session: a model call can take tens of seconds and
-    # must not hold a database connection open for its duration.
-    outcome = await classify_event(event, client)
+        logger.info("Classification cache hit for %s", capture_event_id)
+    else:
+        if use_local:
+            logger.info(
+                "Classifying %s in local mode (no cloud AI) for %s",
+                capture_event_id,
+                event.source_url,
+            )
+        outcome = await classify_event(event, client)
+        if outcome.succeeded and outcome.result is not None and not use_local:
+            await set_cached_result(
+                cache_key(user_id=owner, event_type=event.event_type, snippet=snippet),
+                outcome.result,
+            )
 
     async with async_session_factory() as session:
-        await record_outcome(
+        review_status = await record_outcome(
             session,
             capture_event_id=capture_event_id,
             user_id=user_id or queued_user_id,
             outcome=outcome,
+            snippet=snippet,
         )
 
     if not outcome.succeeded or outcome.result is None:
@@ -112,6 +135,13 @@ async def classify_and_route(capture_event_id: UUID, queued_user_id: str) -> boo
     )
 
     result = outcome.result
+    threshold = settings.classification_auto_route_min_confidence
+    high_items = [
+        item
+        for item in result.classifications
+        if item.category == "none" or item.confidence >= threshold
+    ]
+    result = result.model_copy(update={"classifications": high_items})
     extracted_deadlines = []
     extracted_readings = []
     if event.event_type == "page_opened":
@@ -154,7 +184,9 @@ async def classify_and_route(capture_event_id: UUID, queued_user_id: str) -> boo
         routed = await route_classification(session, result, context)
         if extracted_deadlines:
             extra = await route_extracted_deadlines(
-                session, extracted_deadlines, context
+                session,
+                [item for item in extracted_deadlines if item.confidence >= threshold],
+                context,
             )
             routed = RoutingOutcome(
                 entries=[*routed.entries, *extra.entries],
@@ -168,9 +200,15 @@ async def classify_and_route(capture_event_id: UUID, queued_user_id: str) -> boo
                 entries=[*routed.entries, *extra.entries],
                 skipped=routed.skipped,
             )
-        # Marked only after the routing commit, so a crash in between leaves the
-        # event eligible for another pass. Upserts make that replay harmless.
-        await mark_routed(session, capture_event_id)
+        # Pending review stays un-routed so digest accept can finish the write.
+        if review_status != "pending_review":
+            await mark_routed(session, capture_event_id)
+        await upsert_embedding(
+            session,
+            capture_event_id=capture_event_id,
+            user_id=context.user_id,
+            snippet=snippet,
+        )
 
     logger.info(
         "Classified %s as %s: %s new, %s merged, %s skipped (%sms)",

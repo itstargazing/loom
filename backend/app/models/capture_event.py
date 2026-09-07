@@ -24,6 +24,7 @@ class CaptureEvent(Base):
     source_url: Mapped[str] = mapped_column(Text, nullable=False)
     page_title: Mapped[str] = mapped_column(Text, nullable=False, default="")
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    referring_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     #  When the signal happened in the browser.
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

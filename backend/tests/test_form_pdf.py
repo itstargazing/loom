@@ -29,3 +29,13 @@ def test_extract_empty_when_no_form():
     buf = io.BytesIO()
     writer.write(buf)
     assert extract_fields(buf.getvalue()) == []
+
+
+def test_normalize_pdf_strips_junk_prefix():
+    from app.services.form_pdf import looks_like_pdf, normalize_pdf_bytes
+
+    body = b"%PDF-1.4\n"
+    prefixed = b"HTTP/1.1 200 OK\r\n\r\n" + body
+    assert normalize_pdf_bytes(prefixed).startswith(b"%PDF")
+    assert looks_like_pdf(prefixed)
+    assert not looks_like_pdf(b"not a pdf")

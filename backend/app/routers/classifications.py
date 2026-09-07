@@ -123,8 +123,14 @@ async def reclassify(
         )
 
     outcome = await classify_event(event, get_ai_client())
+    from app.services.capture_text import capture_snippet
+
     await record_outcome(
-        db, capture_event_id=capture_event_id, user_id=owner_id, outcome=outcome
+        db,
+        capture_event_id=capture_event_id,
+        user_id=owner_id,
+        outcome=outcome,
+        snippet=capture_snippet(event.event_type, event.payload),
     )
 
     result = await db.execute(

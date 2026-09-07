@@ -2,16 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import (
-    DateTime,
-    ForeignKey,
-    Index,
-    Integer,
-    String,
-    Text,
-    Uuid,
-    func,
-)
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, Uuid, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -48,11 +39,17 @@ class EventClassification(Base):
     result: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    #  Raw output retained on failure, to iterate on the prompt.
+    #  Raw model output kept even on success so digest/privacy receipts can
+    #  show exactly what the model said.
     raw_output: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     latency_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    cached: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    max_confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    snippet: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    #  pending_review | auto_routed | accepted | reassigned | discarded
+    review_status: Mapped[str] = mapped_column(String(32), nullable=False, default="auto_routed")
 
     #  Set once the result has been written into the typed skill stores. Null
     #  means classified but not yet routed, which is a resumable state.

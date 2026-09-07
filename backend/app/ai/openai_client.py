@@ -9,7 +9,7 @@ from typing import Any
 
 import httpx
 
-from app.ai.base import AIClient, AIClientError, JsonCompletion, JsonCompletionRequest
+from app.ai.base import AIClient, AIClientError, JsonCompletion, JsonCompletionRequest, TextCompletionRequest
 
 logger = logging.getLogger(__name__)
 
@@ -57,24 +57,13 @@ class OpenAICompatibleClient(AIClient):
         if request.max_output_tokens is not None:
             body["max_tokens"] = request.max_output_tokens
 
+        payload = await self._post("/chat/completions", body)
         try:
-            response = await self._client.post("/chat/completions", json=body)
-        except httpx.HTTPError as error:
-            raise AIClientError(f"Request to model provider failed: {error}") from error
-
-        if response.status_code >= 400:
-            raise AIClientError(
-                f"Model provider returned HTTP {response.status_code}: {response.text[:500]}"
-            )
-
-        try:
-            payload = response.json()
             choice = payload["choices"][0]
             text = choice["message"]["content"] or ""
-        except (KeyError, IndexError, ValueError) as error:
+        except (KeyError, IndexError, TypeError) as error:
             raise AIClientError(f"Unexpected provider response shape: {error}") from error
 
-        # Hit when the model was cut off mid-object, which produces invalid JSON.
         if choice.get("finish_reason") == "length":
             logger.warning("Model output truncated by max_tokens")
 
@@ -83,6 +72,49 @@ class OpenAICompatibleClient(AIClient):
             provider=self.provider,
             model=payload.get("model", self.model),
         )
+
+    async def complete_text(self, request: TextCompletionRequest) -> JsonCompletion:
+        body: dict[str, Any] = {
+            "model": self.model,
+            "temperature": request.temperature,
+            "messages": [
+                {"role": "system", "content": request.system},
+                {"role": "user", "content": request.user},
+            ],
+        }
+        if request.max_output_tokens is not None:
+            body["max_tokens"] = request.max_output_tokens
+        payload = await self._post("/chat/completions", body)
+        try:
+            text = payload["choices"][0]["message"]["content"] or ""
+        except (KeyError, IndexError, TypeError) as error:
+            raise AIClientError(f"Unexpected provider response shape: {error}") from error
+        return JsonCompletion(text=text, provider=self.provider, model=payload.get("model", self.model))
+
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        payload = await self._post(
+            "/embeddings",
+            {"model": self.model, "input": texts},
+        )
+        try:
+            ordered = sorted(payload["data"], key=lambda row: row["index"])
+            return [row["embedding"] for row in ordered]
+        except (KeyError, TypeError) as error:
+            raise AIClientError(f"Unexpected embeddings response: {error}") from error
+
+    async def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
+        try:
+            response = await self._client.post(path, json=body)
+        except httpx.HTTPError as error:
+            raise AIClientError(f"Request to model provider failed: {error}") from error
+        if response.status_code >= 400:
+            raise AIClientError(
+                f"Model provider returned HTTP {response.status_code}: {response.text[:500]}"
+            )
+        try:
+            return response.json()
+        except ValueError as error:
+            raise AIClientError(f"Unexpected provider response shape: {error}") from error
 
     async def aclose(self) -> None:
         await self._client.aclose()

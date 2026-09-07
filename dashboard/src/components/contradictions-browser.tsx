@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { EmptyState } from "@/components/panel";
 import { RelativeTime } from "@/components/relative-time";
+import { SourceLink } from "@/components/source-link";
 import { hostnameOf } from "@/lib/format";
 import type { Contradiction } from "@/lib/types";
 
@@ -121,6 +122,11 @@ export function ContradictionsBrowser({
               </div>
 
               <p className="text-sm text-text-primary">{entry.explanation}</p>
+              {entry.agreeCount + entry.disagreeCount > 0 ? (
+                <p className="font-mono text-xs text-text-secondary">
+                  {entry.agreeCount} source{entry.agreeCount === 1 ? "" : "s"} on side A, {entry.disagreeCount} on side B — not a verdict, just the split.
+                </p>
+              ) : null}
 
               <div className="grid gap-md md:grid-cols-2">
                 <ClaimPanel
@@ -134,6 +140,22 @@ export function ContradictionsBrowser({
                   sourceUrl={entry.sourceBUrl}
                 />
               </div>
+
+              {entry.evidence?.length ? (
+                <ul className="flex flex-col gap-sm">
+                  {entry.evidence.map((row, index) => (
+                    <li key={`${row.sourceUrl}-${index}`} className="flex flex-col gap-xs border-t border-border-soft pt-sm">
+                      <p className="font-mono text-[10px] text-text-faint">{row.stance}</p>
+                      <p className="text-sm">“{row.excerpt}”</p>
+                      {row.sourceUrl ? (
+                        <SourceLink href={row.sourceUrl}>
+                          {hostnameOf(row.sourceUrl)}
+                        </SourceLink>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
 
               <div className="flex flex-wrap gap-md">
                 {entry.dismissed ? (
@@ -185,14 +207,7 @@ function ClaimPanel({
       <p className="font-mono text-xs text-text-secondary">{label}</p>
       <p className="text-sm text-text-primary">“{claim}”</p>
       {sourceUrl ? (
-        <a
-          href={sourceUrl}
-          className="text-xs underline"
-          target="_blank"
-          rel="noreferrer"
-        >
-          {hostnameOf(sourceUrl)}
-        </a>
+        <SourceLink href={sourceUrl}>{hostnameOf(sourceUrl)}</SourceLink>
       ) : (
         <p className="text-xs text-text-secondary">No source URL</p>
       )}

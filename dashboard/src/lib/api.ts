@@ -26,6 +26,12 @@ function describe(error: unknown): string {
     // Node's fetch reports a bare "fetch failed" for a refused connection,
     // which tells the reader nothing about what to fix.
     if (error.message === "fetch failed") {
+      const onVercel =
+        process.env.VERCEL === "1" &&
+        (API_BASE_URL.includes("localhost") || API_BASE_URL.includes("127.0.0.1"));
+      if (onVercel) {
+        return "This Vercel deploy has no public API. Set LOOM_API_URL to a hosted FastAPI URL (not localhost) and redeploy.";
+      }
       return `Cannot reach the backend at ${API_BASE_URL}. Is it running?`;
     }
     return error.message;
@@ -137,4 +143,20 @@ export function getPrivacySettings(): Promise<
 
 export function getAccount(): Promise<ApiResult<import("./types").Account>> {
   return apiGet("/api/auth/me");
+}
+
+export function getDigest(): Promise<ApiResult<import("./types").Digest>> {
+  return apiGet("/api/digest");
+}
+
+export function getTrail(limit = 80): Promise<ApiResult<import("./types").Trail>> {
+  return apiGet("/api/trail", { limit });
+}
+
+export function getNotifications(): Promise<ApiResult<import("./types").NotificationList>> {
+  return apiGet("/api/notifications");
+}
+
+export function getBriefs(): Promise<ApiResult<import("./types").Brief[]>> {
+  return apiGet("/api/briefs");
 }

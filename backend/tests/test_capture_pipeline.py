@@ -97,6 +97,7 @@ def test_to_row_maps_wire_names_to_columns(make_capture_event):
         "page_title": event.page_title,
         "payload": event.payload,
         "occurred_at": event.timestamp,
+        "referring_url": None,
     }
 
 

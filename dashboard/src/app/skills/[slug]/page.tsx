@@ -31,7 +31,7 @@ export default async function SkillPage({
   const result = await getSkillEntries<SkillEntryBase>(slug, { limit: PAGE_SIZE });
 
   return (
-    <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-lg">
+    <div className="flex w-full flex-col gap-lg">
       <PageHeader
         title={view.label}
         description={view.description}

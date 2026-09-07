@@ -36,8 +36,9 @@ class ClassificationOutcome:
     model: str
     latency_ms: int
     error: str | None
-    #  Kept for prompt iteration when validation fails.
+    #  Kept for prompt iteration when validation fails, and for receipts on success.
     raw_text: str | None
+    cached: bool = False
 
     @property
     def succeeded(self) -> bool:

@@ -17,6 +17,7 @@ from app.worker import (
     classification_worker,
     contradiction_worker,
     live_doc_diff_worker,
+    nudge_worker,
 )
 
 logging.basicConfig(
@@ -50,6 +51,7 @@ async def main() -> None:
             classification_worker.run(stop_event),
             contradiction_worker.run(stop_event),
             live_doc_diff_worker.run(stop_event),
+            nudge_worker.run(stop_event),
             return_exceptions=True,
         )
         for result in results:

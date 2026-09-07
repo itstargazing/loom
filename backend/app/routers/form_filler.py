@@ -31,8 +31,11 @@ from app.schemas.form_filler import (
 from app.services.auto_attach_index import index_form_document
 from app.services.form_match import FieldMatch, match_document_fields
 from app.services.form_pdf import (
+    PASSWORD_PROTECTED,
     extract_fields,
     fill_fields,
+    looks_like_pdf,
+    normalize_pdf_bytes,
     resolve_stored_path,
     storage_root,
 )
@@ -250,7 +253,7 @@ async def upload_document(
     source_url: Annotated[str, Form()] = "",
 ) -> FormDocument:
     filename = _safe_filename(file.filename or "document.pdf")
-    payload = await file.read()
+    payload = normalize_pdf_bytes(await file.read())
     if len(payload) == 0:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -261,7 +264,7 @@ async def upload_document(
             status_code=413,
             detail="PDF is larger than the 20 MB upload limit",
         )
-    if not payload.startswith(b"%PDF"):
+    if not looks_like_pdf(payload):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="File is not a PDF",
@@ -269,17 +272,21 @@ async def upload_document(
 
     try:
         fields = extract_fields(payload)
+    except ValueError as exc:
+        if str(exc) == PASSWORD_PROTECTED:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="This PDF is password-protected. Unlock it, then upload again.",
+            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Could not read this PDF",
+        ) from exc
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Could not read PDF form fields",
+            detail="Could not read this PDF",
         ) from exc
-
-    if not fields:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="This PDF has no fillable form fields",
-        )
 
     doc_id = uuid.uuid4()
     relative = _stored_relpath(user_id, doc_id)

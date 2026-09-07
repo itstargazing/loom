@@ -181,6 +181,9 @@ class Contradiction(Base):
     source_b_url: Mapped[str] = mapped_column(Text, nullable=False, default="")
     explanation: Mapped[str] = mapped_column(Text, nullable=False, default="")
     dismissed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    agree_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    disagree_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    evidence: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
 
     claim_a_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("contradiction_claims.id", ondelete="SET NULL"), nullable=True

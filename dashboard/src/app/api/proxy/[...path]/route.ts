@@ -22,13 +22,34 @@ async function proxy(
   const headers: Record<string, string> = {
     Authorization: `Bearer ${AUTH_TOKEN}`,
   };
-  const contentType = request.headers.get("content-type");
-  if (contentType) headers["Content-Type"] = contentType;
-
+  const contentType = request.headers.get("content-type") ?? "";
   const method = request.method;
-  const inbound =
-    method === "GET" || method === "HEAD" ? undefined : await request.arrayBuffer();
-  const body = inbound && inbound.byteLength > 0 ? inbound : undefined;
+  const isMultipart = contentType.includes("multipart/form-data");
+
+  let body: BodyInit | undefined;
+  if (method !== "GET" && method !== "HEAD") {
+    if (isMultipart) {
+      const inbound = await request.formData();
+      const outbound = new FormData();
+      for (const [key, value] of inbound.entries()) {
+        if (typeof value === "string") {
+          outbound.append(key, value);
+        } else {
+          const bytes = await value.arrayBuffer();
+          outbound.append(
+            key,
+            new Blob([bytes], { type: value.type || "application/octet-stream" }),
+            value.name,
+          );
+        }
+      }
+      body = outbound;
+    } else {
+      const inbound = await request.arrayBuffer();
+      body = inbound.byteLength > 0 ? inbound : undefined;
+      if (contentType) headers["Content-Type"] = contentType;
+    }
+  }
 
   let response: Response;
   try {
@@ -39,8 +60,15 @@ async function proxy(
       cache: "no-store",
     });
   } catch {
+    const onVercel =
+      process.env.VERCEL === "1" &&
+      (API_BASE_URL.includes("localhost") || API_BASE_URL.includes("127.0.0.1"));
     return NextResponse.json(
-      { detail: `Cannot reach the backend at ${API_BASE_URL}.` },
+      {
+        detail: onVercel
+          ? "This Vercel deploy has no public API. Set LOOM_API_URL to a hosted FastAPI URL (not localhost) and redeploy."
+          : `Cannot reach the backend at ${API_BASE_URL}.`,
+      },
       { status: 502 },
     );
   }

@@ -28,6 +28,7 @@ class CaptureEventIn(BaseModel):
     page_title: Annotated[str, Field(default="", max_length=1024)]
     timestamp: datetime
     payload: dict[str, Any]
+    referring_url: Annotated[str | None, Field(default=None, max_length=2048)]
 
     @field_validator("payload")
     @classmethod
@@ -59,5 +60,6 @@ class CaptureEventOut(BaseModel):
     source_url: str
     page_title: str
     payload: dict[str, Any]
+    referring_url: str | None = None
     occurred_at: datetime
     received_at: datetime

@@ -28,6 +28,7 @@ class CaptureEmitter {
       payload,
       sourceUrl: location.href,
       pageTitle: document.title,
+      referringUrl: document.referrer || undefined,
       timestamp: new Date().toISOString(),
     } as CaptureEvent;
 

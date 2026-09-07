@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
 
@@ -74,6 +74,9 @@ class ContradictionOut(BaseModel):
     claim_a_id: uuid.UUID | None
     claim_b_id: uuid.UUID | None
     created_at: datetime
+    agree_count: int = 0
+    disagree_count: int = 0
+    evidence: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class ContradictionPatch(BaseModel):

@@ -1,4 +1,14 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _asyncpg_url(url: str) -> str:
+    """Render/Railway/Fly hand out postgres:// or postgresql://. SQLAlchemy async needs +asyncpg."""
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://") :]
+    if url.startswith("postgresql://") and "+asyncpg" not in url:
+        return "postgresql+asyncpg://" + url[len("postgresql://") :]
+    return url
 
 
 class Settings(BaseSettings):
@@ -10,7 +20,10 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://loom:loom@localhost:5432/loom"
     redis_url: str = "redis://localhost:6379/0"
-    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    cors_origins: str = (
+        "http://localhost:3000,http://127.0.0.1:3000,"
+        "http://localhost:3001,http://127.0.0.1:3001"
+    )
     #  Viewer uploads hit the API directly; the extension id is not known ahead.
     cors_origin_regex: str = r"chrome-extension://.*"
 
@@ -24,6 +37,10 @@ class Settings(BaseSettings):
     #  Caps the synchronous reclassify endpoint (the expensive user-triggered
     #  AI path). The background worker is bounded separately by batch size.
     classification_rate_limit_per_minute: int = 30
+    llm_rate_limit_per_minute: int = 20
+    #  Below this, a classification is held for digest review instead of routed.
+    classification_auto_route_min_confidence: float = 0.5
+    jwt_secret: str = "loom-dev-jwt-secret"
 
     # --- Capture ingest --------------------------------------------------
     max_events_per_batch: int = 100
@@ -41,11 +58,19 @@ class Settings(BaseSettings):
     #  "openai" for any OpenAI-compatible endpoint, or "stub" for the offline
     #  heuristic classifier. Defaults to the stub so a fresh checkout runs with
     #  no API key; an empty key with provider "openai" falls back to the stub.
+    #  "claude", "openai", or "stub". Empty key with claude/openai falls back to stub.
     ai_provider: str = "stub"
     ai_api_key: str = ""
     ai_base_url: str = "https://api.openai.com/v1"
     ai_model: str = "gpt-4o-mini"
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-sonnet-4-5"
     ai_timeout_seconds: float = 30.0
+    embedding_provider: str = "stub"
+    embedding_api_key: str = ""
+    embedding_base_url: str = "https://api.openai.com/v1"
+    embedding_model: str = "text-embedding-3-small"
+    embedding_dimensions: int = 1536
     #  Classification output is small; this only guards against runaway loops.
     ai_max_output_tokens: int = 2_000
 
@@ -84,6 +109,11 @@ class Settings(BaseSettings):
     #  (in addition to each user's custom list).
     #  Hostname suffixes (e.g. .gov) or exact hosts (bank.example.com).
     local_only_domains: str = ".gov,bank.example.com"
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def require_asyncpg(cls, value: str) -> str:
+        return _asyncpg_url(value)
 
     @property
     def cors_origins_list(self) -> list[str]:

@@ -118,3 +118,29 @@ async def test_oversized_batch_is_rejected(client, queued):
 
 async def test_health_needs_no_auth(client):
     assert (await client.get("/health")).status_code == 200
+
+
+async def test_ingest_falls_back_when_queue_is_down(client, monkeypatch):
+    async def boom(_entries):
+        raise ConnectionError("redis down")
+
+    inline_calls: list[int] = []
+
+    async def fake_inline(_user_id, events):
+        inline_calls.append(len(events))
+        return len(events)
+
+    monkeypatch.setattr(
+        "app.routers.capture.enqueue_capture_events", boom
+    )
+    monkeypatch.setattr(
+        "app.routers.capture.persist_and_classify_inline", fake_inline
+    )
+
+    response = await client.post(
+        "/api/capture/events", json={"events": [_event()]}, headers=AUTH
+    )
+
+    assert response.status_code == 202
+    assert response.json() == {"accepted": 1, "queued": 1}
+    assert inline_calls == [1]

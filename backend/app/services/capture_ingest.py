@@ -19,6 +19,12 @@ def _to_row(user_id: str, event: CaptureEventIn) -> dict[str, Any]:
         "page_title": event.page_title,
         "payload": event.payload,
         "occurred_at": event.timestamp,
+        "referring_url": event.referring_url
+        or (
+            event.payload.get("referringUrl")
+            if isinstance(event.payload.get("referringUrl"), str)
+            else None
+        ),
     }
 
 

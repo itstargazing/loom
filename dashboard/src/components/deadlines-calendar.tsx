@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { EmptyState } from "@/components/panel";
 import { Badge } from "@/components/skill-table";
+import { SourceLink } from "@/components/source-link";
 import { hostnameOf } from "@/lib/format";
 import type { Deadline } from "@/lib/types";
 
@@ -377,15 +379,16 @@ export function DeadlinesCalendar({
                   From {selected.pageTitle || hostnameOf(selected.sourceUrl)}
                 </p>
                 {selected.sourceUrl ? (
-                  <a
-                    href={selected.sourceUrl}
-                    className="text-xs underline"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
+                  <SourceLink href={selected.sourceUrl}>
                     {hostnameOf(selected.sourceUrl)}
-                  </a>
+                  </SourceLink>
                 ) : null}
+                <Link
+                  href={`/ask?mode=brief&deadlineId=${encodeURIComponent(selected.id)}&q=${encodeURIComponent(selected.title)}`}
+                  className="loom-btn loom-btn-secondary mt-sm text-center"
+                >
+                  Generate brief
+                </Link>
                 {selected.contextSnippet ? (
                   <p className="mt-sm text-sm text-text-primary">
                     “{selected.contextSnippet}”

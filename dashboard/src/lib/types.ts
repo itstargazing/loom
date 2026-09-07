@@ -98,6 +98,17 @@ export interface Contradiction {
   claimAId: string | null;
   claimBId: string | null;
   createdAt: string;
+  agreeCount: number;
+  disagreeCount: number;
+  evidence: ContradictionEvidence[];
+}
+
+export interface ContradictionEvidence {
+  claim: string;
+  sourceUrl: string;
+  pageTitle: string;
+  stance: string;
+  excerpt: string;
 }
 
 export interface ReadingCompilerEntry extends SkillEntryBase {
@@ -315,4 +326,101 @@ export interface Account {
 export interface LogoutResult {
   ok: boolean;
   detail: string;
+}
+
+export interface DigestCard {
+  id: string;
+  captureEventId: string;
+  snippet: string;
+  sourceUrl: string;
+  pageTitle: string;
+  occurredAt: string;
+  categories: string[];
+  confidence: number;
+  reason: string | null;
+  reviewStatus: string;
+  provider: string;
+  model: string;
+  cached: boolean;
+  fields: Record<string, unknown>;
+  group: string;
+  groupLabel: string;
+}
+
+export interface DigestGroup {
+  key: string;
+  label: string;
+  items: DigestCard[];
+}
+
+export interface Digest {
+  since: string;
+  items: DigestCard[];
+  groups: DigestGroup[];
+}
+
+export interface AskCitation {
+  captureEventId: string;
+  sourceUrl: string;
+  pageTitle: string;
+  snippet: string;
+  occurredAt: string | null;
+  score: number;
+}
+
+export interface AskAnswer {
+  question: string;
+  answer: string;
+  empty: boolean;
+  citations: AskCitation[];
+}
+
+export interface TrailNode {
+  id: string;
+  captureEventId: string;
+  snippet: string;
+  sourceUrl: string;
+  pageTitle: string;
+  referringUrl: string | null;
+  occurredAt: string;
+  categories: string[];
+  reviewStatus: string | null;
+}
+
+export interface TrailEdge {
+  source: string;
+  target: string;
+  kind: string;
+}
+
+export interface Trail {
+  nodes: TrailNode[];
+  edges: TrailEdge[];
+  sessionStartedAt: string | null;
+  extras: Record<string, unknown>;
+}
+
+export interface Brief {
+  id: string;
+  topic: string;
+  markdown: string;
+  sourceEventIds: string[];
+  deadlineId: string | null;
+  createdAt: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  href: string | null;
+  readAt: string | null;
+  dismissedAt: string | null;
+  createdAt: string;
+}
+
+export interface NotificationList {
+  items: NotificationItem[];
+  unread: number;
 }

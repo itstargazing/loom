@@ -32,11 +32,20 @@ class SlidingWindowLimiter:
 
 
 classification_limiter = SlidingWindowLimiter()
+llm_limiter = SlidingWindowLimiter()
 
 
 def limit_classification(user_id: str) -> None:
     classification_limiter.check(
         f"classify:{user_id}",
         limit=settings.classification_rate_limit_per_minute,
+        window_seconds=60.0,
+    )
+
+
+def limit_llm(user_id: str) -> None:
+    llm_limiter.check(
+        f"llm:{user_id}",
+        limit=settings.llm_rate_limit_per_minute,
         window_seconds=60.0,
     )

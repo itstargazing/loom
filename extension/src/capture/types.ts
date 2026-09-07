@@ -86,6 +86,7 @@ interface CaptureEventEnvelope {
   id: string;
   sourceUrl: string;
   pageTitle: string;
+  referringUrl?: string;
   /** ISO 8601 */
   timestamp: string;
 }

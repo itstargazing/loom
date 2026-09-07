@@ -9,16 +9,21 @@ from app.core.config import settings
 from app.core.database import engine
 from app.core.redis import close_redis
 from app.routers import (
+    ask,
     auth,
     auto_attach,
+    briefs,
     capture,
     classifications,
+    digest,
     form_filler,
     health,
     live_doc_diff,
+    notifications,
     overview,
     privacy,
     skills,
+    trail,
 )
 from app.services.capture_queue import capture_stream
 from app.services.classification_queue import classification_stream
@@ -64,6 +69,11 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(capture.router)
 app.include_router(classifications.router)
+app.include_router(digest.router)
+app.include_router(ask.router)
+app.include_router(trail.router)
+app.include_router(briefs.router)
+app.include_router(notifications.router)
 app.include_router(skills.router)
 app.include_router(form_filler.router)
 app.include_router(live_doc_diff.router)

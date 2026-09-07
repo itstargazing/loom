@@ -9,10 +9,12 @@ It reads ``request.context`` rather than the rendered prompt, which is why
 :class:`JsonCompletionRequest` carries the structured event alongside the text.
 """
 
+import hashlib
+import json
 import re
 from typing import Any
 
-from app.ai.base import AIClient, JsonCompletion, JsonCompletionRequest
+from app.ai.base import AIClient, JsonCompletion, JsonCompletionRequest, TextCompletionRequest
 from app.schemas.classification import (
     ClassificationItem,
     ClassificationResult,
@@ -439,6 +441,17 @@ class StubAIClient(AIClient):
         self.model = model
 
     async def complete_json(self, request: JsonCompletionRequest) -> JsonCompletion:
+        if request.schema_name == "text_completion":
+            answer = (
+                "I don't have enough captured browsing to answer that yet. "
+                "Highlight or copy a passage and ask again."
+            )
+            return JsonCompletion(
+                text=json.dumps({"text": answer}),
+                provider=self.provider,
+                model=self.model,
+            )
+
         if request.schema_name == "claim_comparison" or request.context.get("kind") == "claim_comparison":
             from app.services.contradiction_compare import ComparisonInput, compare_locally
 
@@ -463,3 +476,95 @@ class StubAIClient(AIClient):
             provider=self.provider,
             model=self.model,
         )
+
+    async def complete_text(self, request: TextCompletionRequest) -> JsonCompletion:
+        if "Captured material:" in request.user:
+            return JsonCompletion(
+                text=_stub_brief(request.user),
+                provider=self.provider,
+                model=self.model,
+            )
+        if "Captured sources:" in request.user:
+            return JsonCompletion(
+                text=_stub_ask_answer(request.user),
+                provider=self.provider,
+                model=self.model,
+            )
+        return JsonCompletion(
+            text=(
+                "I don't have enough captured browsing to answer that yet. "
+                "Highlight or copy a passage and ask again."
+            ),
+            provider=self.provider,
+            model=self.model,
+        )
+
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        return [_hashed_embedding(text, dimensions=1536) for text in texts]
+
+
+def _stub_ask_answer(user: str) -> str:
+    if "[1]" in user:
+        return (
+            "Based on captured sources [1], here is what is on file. "
+            "I am not adding anything that was not captured."
+        )
+    return (
+        "I don't have enough captured browsing to answer that yet. "
+        "Highlight or copy a passage and ask again."
+    )
+
+
+def _stub_brief(user: str) -> str:
+    """Structured markdown so Generate brief is a document, not an Ask one-liner."""
+    topic = "Untitled"
+    for line in user.splitlines():
+        if line.startswith("Topic:"):
+            topic = line.split(":", 1)[1].strip() or topic
+            break
+    sources: list[str] = []
+    for raw in user.split("[")[1:]:
+        body = raw.split("]", 1)[-1].strip()
+        if body and not body.startswith("(no related"):
+            first = body.split("\n", 1)[0].strip(" -")
+            if first:
+                sources.append(first[:220])
+    if "(no related captures)" in user or not sources:
+        return (
+            f"# {topic}\n\n"
+            "## What's been read\n\n"
+            "Nothing related is on file yet.\n\n"
+            "## What's been cited\n\n"
+            "No citations matched this topic.\n\n"
+            "## Where sources disagree\n\n"
+            "Not enough captured material to compare claims.\n\n"
+            "## What still looks thin\n\n"
+            "You have 0 sources; this kind of question often needs more. "
+            "Highlight, copy, or linger on a passage, then generate again."
+        )
+    bullets = "\n".join(f"- {item}" for item in sources[:8])
+    return (
+        f"# {topic}\n\n"
+        f"## What's been read\n\n{bullets}\n\n"
+        "## What's been cited\n\n"
+        "Only the captures listed above were used. Nothing was invented.\n\n"
+        "## Where sources disagree\n\n"
+        "The offline compiler does not pick a winner; it only lists what was captured.\n\n"
+        f"## What still looks thin\n\n"
+        f"You have {len(sources)} source(s). More highlights on this topic will fill the gaps."
+    )
+
+
+def _hashed_embedding(text: str, *, dimensions: int) -> list[float]:
+    """Deterministic unit-ish vector so offline tests can still rank similar text."""
+    digest = hashlib.sha256(text.casefold().encode("utf-8")).digest()
+    values: list[float] = []
+    seed = digest
+    while len(values) < dimensions:
+        seed = hashlib.sha256(seed).digest()
+        for byte in seed:
+            values.append((byte / 127.5) - 1.0)
+            if len(values) >= dimensions:
+                break
+    norm = sum(v * v for v in values) ** 0.5 or 1.0
+    return [v / norm for v in values[:dimensions]]

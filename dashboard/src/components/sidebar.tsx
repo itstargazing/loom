@@ -25,6 +25,13 @@ function NavLink({ href, label }: { href: string; label: string }) {
   );
 }
 
+const CORE_LINKS = [
+  { href: "/", label: "Overview" },
+  { href: "/digest", label: "Digest" },
+  { href: "/ask", label: "Ask" },
+  { href: "/trail", label: "Trail" },
+];
+
 const SKILL_LINKS = [
   ...SKILL_VIEWS.map((view) => ({
     href: `/skills/${view.slug}`,
@@ -54,7 +61,9 @@ export function Sidebar() {
           </span>
         </div>
         <div className="-mx-1 flex gap-xs overflow-x-auto px-1 pb-1">
-          <NavLink href="/" label="Overview" />
+          {CORE_LINKS.map((link) => (
+            <NavLink key={link.href} href={link.href} label={link.label} />
+          ))}
           {SKILL_LINKS.map((link) => (
             <NavLink key={link.href} href={link.href} label={link.label} />
           ))}
@@ -78,7 +87,9 @@ export function Sidebar() {
         </Link>
 
         <div className="flex flex-col gap-xs">
-          <NavLink href="/" label="Overview" />
+          {CORE_LINKS.map((link) => (
+            <NavLink key={link.href} href={link.href} label={link.label} />
+          ))}
         </div>
 
         <div className="flex min-h-0 flex-col gap-xs overflow-y-auto">
@@ -90,7 +101,7 @@ export function Sidebar() {
 
         <div className="mt-auto flex flex-col gap-xs">
           <NavLink href="/account" label="Account" />
-          <NavLink href="/privacy" label="Local-only mode" />
+          <NavLink href="/privacy" label="Local-only" />
           <NavLink href="/style-guide" label="Style guide" />
         </div>
       </nav>

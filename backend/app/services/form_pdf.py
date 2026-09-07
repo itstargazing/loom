@@ -9,34 +9,90 @@ from typing import Any
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import BooleanObject, NameObject, TextStringObject
 
+PASSWORD_PROTECTED = "password-protected"
+
+
+def normalize_pdf_bytes(payload: bytes) -> bytes:
+    """Drop a BOM or junk prefix so the %PDF header is at byte 0."""
+    marker = payload.find(b"%PDF")
+    if marker <= 0 or marker > 1024:
+        return payload
+    return payload[marker:]
+
+
+def looks_like_pdf(payload: bytes) -> bool:
+    return normalize_pdf_bytes(payload).lstrip().startswith(b"%PDF")
+
+
+def _open_reader(pdf_bytes: bytes) -> PdfReader:
+    reader = PdfReader(io.BytesIO(normalize_pdf_bytes(pdf_bytes)))
+    if getattr(reader, "is_encrypted", False):
+        try:
+            result = reader.decrypt("")
+        except Exception as error:
+            raise ValueError(PASSWORD_PROTECTED) from error
+        if result == 0:
+            raise ValueError(PASSWORD_PROTECTED)
+    return reader
+
+
+def _as_field(name: Any, field: Any) -> dict[str, Any] | None:
+    if name is None:
+        return None
+    field_type = str(field.get("/FT", "") or "").replace("/", "").lower() or "unknown"
+    value = field.get("/V")
+    if value is not None:
+        value = str(value)
+    options: list[str] = []
+    states = field.get("/_States_")
+    if isinstance(states, list):
+        options = [str(item) for item in states]
+    return {
+        "name": str(name),
+        "type": field_type,
+        "value": value,
+        "options": options,
+    }
+
 
 def extract_fields(pdf_bytes: bytes) -> list[dict[str, Any]]:
-    """Return structured field metadata for matching."""
-    reader = PdfReader(io.BytesIO(pdf_bytes))
-    if reader.get_fields() is None:
-        return []
+    """Return structured field metadata for matching.
 
-    fields: list[dict[str, Any]] = []
-    for name, field in reader.get_fields().items():
-        if name is None:
-            continue
-        field_type = str(field.get("/FT", "")).replace("/", "").lower() or "unknown"
-        value = field.get("/V")
-        if value is not None:
-            value = str(value)
-        options: list[str] = []
-        states = field.get("/_States_")
-        if isinstance(states, list):
-            options = [str(item) for item in states]
-        fields.append(
-            {
-                "name": str(name),
-                "type": field_type,
-                "value": value,
-                "options": options,
-            }
-        )
-    return fields
+    Walks AcroForm names and page widget annotations. Flattened or scanned
+    PDFs legitimately return an empty list.
+    """
+    reader = _open_reader(pdf_bytes)
+    by_name: dict[str, dict[str, Any]] = {}
+
+    raw = reader.get_fields() or {}
+    for name, field in raw.items():
+        parsed = _as_field(name, field)
+        if parsed:
+            by_name[parsed["name"]] = parsed
+
+    for page in reader.pages:
+        annots = page.get("/Annots") or []
+        for annot in annots:
+            try:
+                widget = annot.get_object()
+            except Exception:
+                continue
+            subtype = str(widget.get("/Subtype", ""))
+            if subtype not in {"/Widget", "Widget"}:
+                continue
+            target = widget
+            name = widget.get("/T")
+            if name is None and "/Parent" in widget:
+                try:
+                    target = widget["/Parent"].get_object()
+                    name = target.get("/T")
+                except Exception:
+                    continue
+            parsed = _as_field(name, target)
+            if parsed and parsed["name"] not in by_name:
+                by_name[parsed["name"]] = parsed
+
+    return list(by_name.values())
 
 
 def fill_fields(pdf_bytes: bytes, values: dict[str, str]) -> bytes:

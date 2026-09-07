@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -9,7 +10,10 @@ from app.core.database import get_db
 from app.core.security import CurrentUserId
 from app.models.capture_event import CaptureEvent
 from app.schemas.capture import CaptureBatchAck, CaptureBatchIn, CaptureEventOut
+from app.services.capture_inline import persist_and_classify_inline
 from app.services.capture_queue import enqueue_capture_events
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/capture", tags=["capture"])
 
@@ -32,7 +36,15 @@ async def ingest_events(batch: CaptureBatchIn, user_id: CurrentUserId) -> Captur
             detail=f"Batch exceeds {settings.max_events_per_batch} events",
         )
 
-    queued = await enqueue_capture_events(user_id, batch.events)
+    try:
+        queued = await enqueue_capture_events(user_id, batch.events)
+    except Exception as error:
+        logger.warning(
+            "Capture queue unavailable (%s); writing %s event(s) inline",
+            error,
+            len(batch.events),
+        )
+        queued = await persist_and_classify_inline(user_id, batch.events)
 
     return CaptureBatchAck(accepted=len(batch.events), queued=queued)
 

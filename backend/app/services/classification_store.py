@@ -7,6 +7,7 @@ from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.models.capture_event import CaptureEvent
 from app.models.event_classification import EventClassification
 from app.services.classification import ClassifiableEvent, ClassificationOutcome
@@ -35,8 +36,24 @@ async def record_outcome(
     capture_event_id: UUID,
     user_id: str,
     outcome: ClassificationOutcome,
-) -> None:
+    snippet: str = "",
+) -> str:
     """Upsert the outcome, so reprocessing an event replaces its previous row."""
+    max_confidence = 0.0
+    if outcome.result and outcome.result.classifications:
+        max_confidence = max(item.confidence for item in outcome.result.classifications)
+
+    review_status = "auto_routed"
+    if outcome.succeeded and outcome.result is not None:
+        routable = [
+            item for item in outcome.result.classifications if item.category != "none"
+        ]
+        if routable and any(
+            item.confidence < settings.classification_auto_route_min_confidence
+            for item in routable
+        ):
+            review_status = "pending_review"
+
     values = {
         "id": uuid4(),
         "capture_event_id": capture_event_id,
@@ -47,10 +64,13 @@ async def record_outcome(
         "categories": outcome.result.categories if outcome.result else [],
         "result": outcome.result.model_dump() if outcome.result else None,
         "error": outcome.error,
-        #  Only kept when validation failed, to iterate on the prompt.
-        "raw_output": None if outcome.succeeded else outcome.raw_text,
+        "raw_output": outcome.raw_text,
         "attempts": outcome.attempts,
         "latency_ms": outcome.latency_ms,
+        "cached": outcome.cached,
+        "max_confidence": max_confidence,
+        "snippet": snippet,
+        "review_status": review_status,
     }
 
     statement = (
@@ -70,6 +90,10 @@ async def record_outcome(
                     "raw_output",
                     "attempts",
                     "latency_ms",
+                    "cached",
+                    "max_confidence",
+                    "snippet",
+                    "review_status",
                 )
             },
         )
@@ -77,6 +101,7 @@ async def record_outcome(
 
     await session.execute(statement)
     await session.commit()
+    return review_status
 
 
 async def already_handled(session: AsyncSession, capture_event_id: UUID) -> bool:
@@ -86,13 +111,24 @@ async def already_handled(session: AsyncSession, capture_event_id: UUID) -> bool
     reaching the skill stores gets picked up again rather than being skipped.
     """
     result = await session.execute(
-        select(EventClassification.id).where(
+        select(EventClassification.id, EventClassification.review_status).where(
             EventClassification.capture_event_id == capture_event_id,
             EventClassification.status == "succeeded",
+        )
+    )
+    row = result.first()
+    if row is None:
+        return False
+    _id, review_status = row
+    if review_status == "pending_review":
+        return True
+    routed = await session.execute(
+        select(EventClassification.id).where(
+            EventClassification.capture_event_id == capture_event_id,
             EventClassification.routed_at.is_not(None),
         )
     )
-    return result.first() is not None
+    return routed.first() is not None
 
 
 async def mark_routed(session: AsyncSession, capture_event_id: UUID) -> None:

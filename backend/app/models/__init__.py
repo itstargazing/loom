@@ -1,4 +1,11 @@
 from app.models.account import UserAccount
+from app.models.breakthrough import (
+    CaptureEmbedding,
+    ClassificationCorrection,
+    DashboardNotification,
+    DeadlineNudgeLog,
+    ResearchBrief,
+)
 from app.models.capture_event import CaptureEvent
 from app.models.collection import Collection
 from app.models.event_classification import EventClassification
@@ -26,6 +33,11 @@ from app.models.skill_stores import (
 __all__ = [
     "UserAccount",
     "CaptureEvent",
+    "CaptureEmbedding",
+    "ClassificationCorrection",
+    "DashboardNotification",
+    "DeadlineNudgeLog",
+    "ResearchBrief",
     "Citation",
     "Collection",
     "ContractFlag",
