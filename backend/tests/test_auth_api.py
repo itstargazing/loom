@@ -41,6 +41,8 @@ async def test_auth_status_describes_stub_mode():
     assert body["userId"] == "dev-user"
     assert body["authMode"] == "stub"
     assert body["providerReady"] is False
+    assert "environment" in body
+    assert "multi-user" in body["detail"].casefold()
 
 
 async def test_logout_is_a_client_side_hint():

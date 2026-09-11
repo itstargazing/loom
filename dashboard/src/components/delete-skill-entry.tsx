@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { apiErrorMessage } from "@/lib/api-error";
+
 export function DeleteSkillEntry({
   slug,
   id,
@@ -26,11 +28,7 @@ export function DeleteSkillEntry({
       });
       if (!response.ok && response.status !== 204) {
         const body = await response.json().catch(() => ({}));
-        throw new Error(
-          typeof body.detail === "string"
-            ? body.detail
-            : `Delete failed (${response.status})`,
-        );
+        throw new Error(apiErrorMessage(body, `Delete failed (${response.status})`));
       }
       router.refresh();
     } catch (caught) {

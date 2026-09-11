@@ -7,7 +7,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -16,11 +16,99 @@ from app.core.config import settings
 from app.models.breakthrough import ClassificationCorrection
 from app.models.capture_event import CaptureEvent
 from app.models.event_classification import EventClassification
-from app.schemas.classification import ClassificationItem, ClassificationResult, ExtractedFields
+from app.schemas.classification import (
+    REQUIRED_FIELDS,
+    ClassificationItem,
+    ClassificationResult,
+    ExtractedFields,
+)
 from app.services.classification_store import mark_routed
 from app.services.skill_router import RoutingContext, route_classification
 
 DIGEST_WINDOW = timedelta(hours=24)
+
+CATEGORY_FIELD_HINTS: dict[str, str] = {
+    "glossary_term": "This needs a term and definition to file as a glossary entry.",
+    "citation": "This needs a quote to file as a citation.",
+    "deadline": "This needs a title and date to file as a deadline.",
+    "contradiction_candidate": "This needs a claim and topic to file as a contradiction.",
+    "reading_highlight": "This needs a passage to file in the reading compiler.",
+    "product_listing": "This needs a product name to file as a product.",
+    "job_listing": "This needs a job title to file as a job listing.",
+    "contract_clause": "This needs clause text, a flag reason, and a risk level.",
+}
+
+
+class DigestMissingFieldsError(ValueError):
+    """Raised when a reassign is missing fields the target category requires."""
+
+    def __init__(self, category: str, missing: list[str]):
+        self.category = category
+        self.missing = missing
+        hint = CATEGORY_FIELD_HINTS.get(
+            category,
+            f"This category needs more detail: {', '.join(missing)}.",
+        )
+        super().__init__(hint)
+
+
+def _camel_to_snake(name: str) -> str:
+    chars: list[str] = []
+    for index, char in enumerate(name):
+        if char.isupper() and index > 0:
+            chars.append("_")
+        chars.append(char.lower())
+    return "".join(chars)
+
+
+def normalize_digest_fields(raw: dict[str, Any] | None) -> dict[str, Any]:
+    """Accept camelCase or snake_case keys from the digest UI."""
+    if not raw:
+        return {}
+    allowed = set(ExtractedFields.model_fields)
+    out: dict[str, Any] = {}
+    for key, value in raw.items():
+        if value is None or value == "":
+            continue
+        snake = key if key in allowed else _camel_to_snake(key)
+        if snake in allowed:
+            out[snake] = value
+    return out
+
+
+def missing_required_fields(category: str, fields: dict[str, Any]) -> list[str]:
+    if category not in REQUIRED_FIELDS:
+        return []
+    required = REQUIRED_FIELDS[category]  # type: ignore[index]
+    return [
+        name
+        for name in required
+        if fields.get(name) in (None, "", [])
+    ]
+
+
+def build_reassign_item(
+    category: str,
+    *,
+    existing_fields: dict[str, Any],
+    override_fields: dict[str, Any] | None,
+) -> ClassificationItem:
+    """Merge existing + provided fields and validate category requirements."""
+    merged = {
+        **normalize_digest_fields(existing_fields),
+        **normalize_digest_fields(override_fields),
+    }
+    missing = missing_required_fields(category, merged)
+    if missing:
+        raise DigestMissingFieldsError(category, missing)
+    return ClassificationItem(
+        category=category,  # type: ignore[arg-type]
+        confidence=1.0,
+        reason="Reassigned in the daily digest.",
+        fields=ExtractedFields.of(**{
+            key: merged.get(key) for key in ExtractedFields.model_fields
+        }),
+    )
 
 CATEGORY_GROUP_LABELS = {
     "glossary_term": "Glossary",
@@ -119,6 +207,7 @@ async def apply_digest_action(
     classification_id: uuid.UUID,
     action: str,
     category: str | None,
+    fields: dict[str, Any] | None = None,
 ) -> EventClassification:
     result = await session.execute(
         select(EventClassification, CaptureEvent)
@@ -146,25 +235,23 @@ async def apply_digest_action(
     elif action == "reassign":
         if not category:
             raise ValueError("reassign requires a category")
+        item = build_reassign_item(
+            category,
+            existing_fields=_item_fields(classification),
+            override_fields=fields,
+        )
         classification.review_status = "reassigned"
         classification.categories = [category]
-        if classification.result:
-            fields = _item_fields(classification)
-            item = ClassificationItem(
-                category=category,  # type: ignore[arg-type]
-                confidence=1.0,
-                reason="Reassigned in the daily digest.",
-                fields=ExtractedFields.of(**{
-                    key: fields.get(key) for key in ExtractedFields.model_fields
-                }),
-            )
-            classification.result = ClassificationResult(classifications=[item]).model_dump()
+        classification.result = ClassificationResult(classifications=[item]).model_dump()
         corrected = category
         try:
             await _route_now(session, classification, event)
             await mark_routed(session, event.id)
         except Exception:
             logger.exception("Digest reassign routing failed for %s", classification.id)
+            raise ValueError(
+                "Could not file this into the skill store. Check the fields and try again."
+            ) from None
     else:
         raise ValueError("unknown action")
 

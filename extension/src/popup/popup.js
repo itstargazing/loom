@@ -1,6 +1,8 @@
 import { loadCaptureSettings, setSignalEnabled } from "../capture/settings";
 import { CAPTURE_EVENT_DESCRIPTIONS, CAPTURE_EVENT_LABELS, CAPTURE_EVENT_TYPES, } from "../capture/types";
 import { requestPdfForm, requestPdfSnapshot } from "../pdf/messages";
+import { loadSyncConfig } from "../background/sync-config";
+import { loadPrivacySettings, matchesLocalDomain, refreshPrivacySettingsFromApi, saveLocalOnlyDomains, } from "../capture/privacy-settings";
 const FEED_POLL_MS = 1000;
 const SYNC_POLL_MS = 2000;
 const FEED_VISIBLE_LIMIT = 25;
@@ -26,25 +28,29 @@ function renderSignalToggles(enabled) {
         return;
     container.replaceChildren();
     for (const type of CAPTURE_EVENT_TYPES) {
-        const row = document.createElement("label");
-        row.className = "flex gap-3 cursor-pointer";
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.checked = enabled[type];
-        checkbox.className = "loom-checkbox mt-[3px]";
-        checkbox.addEventListener("change", () => {
-            void setSignalEnabled(type, checkbox.checked);
-        });
+        const row = document.createElement("div");
+        row.className = "flex items-center justify-between gap-3";
         const text = document.createElement("span");
-        text.className = "flex-1";
+        text.className = "min-w-0 flex-1";
         const name = document.createElement("span");
-        name.className = "block text-sm";
+        name.className = "block font-mono text-xs";
         name.textContent = CAPTURE_EVENT_LABELS[type];
         const description = document.createElement("span");
         description.className = "block mt-0.5 text-xs text-text-secondary";
         description.textContent = CAPTURE_EVENT_DESCRIPTIONS[type];
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.role = "switch";
+        toggle.className = "loom-switch";
+        toggle.setAttribute("aria-checked", String(enabled[type]));
+        toggle.setAttribute("aria-label", CAPTURE_EVENT_LABELS[type]);
+        toggle.addEventListener("click", () => {
+            const next = toggle.getAttribute("aria-checked") !== "true";
+            toggle.setAttribute("aria-checked", String(next));
+            void setSignalEnabled(type, next);
+        });
         text.append(name, description);
-        row.append(checkbox, text);
+        row.append(text, toggle);
         container.append(row);
     }
 }
@@ -74,6 +80,114 @@ function initSyncSection() {
     });
     void pollSyncStatus();
     setInterval(() => void pollSyncStatus(), SYNC_POLL_MS);
+}
+/* ---------------------------------------------------------- local-only mode */
+async function renderLocalModeSection() {
+    const settings = await refreshPrivacySettingsFromApi().catch(loadPrivacySettings);
+    const textarea = document.getElementById("local-mode-domains");
+    if (textarea) {
+        textarea.value = settings.localOnlyDomains.join("\n");
+    }
+    setText("local-mode-defaults", settings.defaultDomains.length
+        ? `Always on: ${settings.defaultDomains.join(", ")}`
+        : "");
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const url = activeTab?.url ?? "";
+    if (url && matchesLocalDomain(url, settings.effectiveDomains)) {
+        setBadge("local-mode-badge", "warning", "This tab → local heuristics (no cloud AI)");
+    }
+    else if (url.startsWith("http")) {
+        setBadge("local-mode-badge", "success", "This tab → cloud / configured AI");
+    }
+    else {
+        setBadge("local-mode-badge", "warning", "Open an http(s) page to see mode");
+    }
+}
+function initLocalModeSection() {
+    document.getElementById("local-mode-save")?.addEventListener("click", () => {
+        void (async () => {
+            const status = document.getElementById("local-mode-status");
+            const textarea = document.getElementById("local-mode-domains");
+            const domains = (textarea?.value ?? "")
+                .split(/\n|,/)
+                .map((part) => part.trim())
+                .filter(Boolean);
+            try {
+                await saveLocalOnlyDomains(domains);
+                if (status)
+                    status.textContent = "Saved.";
+                await renderLocalModeSection();
+            }
+            catch (error) {
+                if (status) {
+                    status.textContent =
+                        error instanceof Error ? error.message : "Could not save domains.";
+                }
+            }
+        })();
+    });
+    void renderLocalModeSection();
+}
+/* ----------------------------------------------------------- live doc diff */
+async function watchCurrentTab() {
+    const status = document.getElementById("watch-status");
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const url = activeTab?.url?.trim();
+    if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+        if (status)
+            status.textContent = "Open an http(s) page first.";
+        return;
+    }
+    const config = await loadSyncConfig();
+    const label = activeTab.title?.trim() || url;
+    try {
+        const setsResponse = await fetch(`${config.apiBaseUrl}/api/skills/live-doc-diff/sets`, {
+            headers: { Authorization: `Bearer ${config.authToken}` },
+        });
+        if (!setsResponse.ok) {
+            throw new Error(`List failed (${setsResponse.status})`);
+        }
+        const sets = (await setsResponse.json());
+        let setId = sets[0]?.id;
+        if (!setId) {
+            const created = await fetch(`${config.apiBaseUrl}/api/skills/live-doc-diff/sets`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${config.authToken}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ name: "From extension" }),
+            });
+            if (!created.ok)
+                throw new Error(`Create set failed (${created.status})`);
+            const body = (await created.json());
+            setId = body.id;
+        }
+        const added = await fetch(`${config.apiBaseUrl}/api/skills/live-doc-diff/sets/${setId}/documents`, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${config.authToken}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ sourceUrl: url, label }),
+        });
+        if (!added.ok)
+            throw new Error(`Add failed (${added.status})`);
+        if (status) {
+            status.textContent = `Added to watched set. Open the dashboard Live Doc Diff page and Scan.`;
+        }
+    }
+    catch (error) {
+        if (status) {
+            status.textContent =
+                error instanceof Error ? error.message : "Could not register this tab.";
+        }
+    }
+}
+function initWatchSection() {
+    document.getElementById("watch-current-tab")?.addEventListener("click", () => {
+        void watchCurrentTab();
+    });
 }
 /* --------------------------------------------------------------------- pdf */
 async function renderPdfStatus() {
@@ -154,6 +268,8 @@ async function init() {
     const settings = await loadCaptureSettings();
     renderSignalToggles(settings.signals);
     initSyncSection();
+    initLocalModeSection();
+    initWatchSection();
     void renderPdfStatus();
     if (import.meta.env.DEV && settings.debugPanel) {
         initDebugPanel();

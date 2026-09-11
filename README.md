@@ -545,9 +545,13 @@ docker compose exec backend alembic upgrade head
 | `DATABASE_URL` | Async PostgreSQL connection string | `postgresql+asyncpg://loom:loom@localhost:5432/loom` |
 | `REDIS_URL` | Redis connection string | `redis://localhost:6379/0` |
 | `CORS_ORIGINS` | Comma-separated allowed origins | `http://localhost:3000` |
-| `STUB_AUTH_TOKEN` | Shared bearer token until Phase 15 | `loom-dev-token` |
-| `STUB_USER_ID` | User all requests map to until Phase 15 | `dev-user` |
-| `AI_PROVIDER` | `openai` or `stub` (offline heuristics) | `stub` |
+| `STUB_AUTH_TOKEN` | Shared bearer when `AUTH_MODE=stub` (local only) | `loom-dev-token` |
+| `STUB_USER_ID` | User all stub requests map to | `dev-user` |
+| `AUTH_MODE` | `stub` (dev) or `jwt` (per-user / Clerk / Supabase) | `stub` |
+| `ENVIRONMENT` | `production` refuses stub auth at startup | `development` |
+| `JWT_SECRET` / `JWT_JWKS_URL` | HS256 secret and/or JWKS for JWT mode | see `.env.example` |
+| `SENTRY_DSN` | Optional API (and dashboard) error reporting | — |
+| `AI_PROVIDER` | `claude`, `openai`, or `stub` (offline heuristics) | `stub` |
 | `AI_API_KEY` | Provider key; empty falls back to `stub` | — |
 | `AI_BASE_URL` | OpenAI-compatible endpoint | `https://api.openai.com/v1` |
 | `AI_MODEL` | Model used for classification | `gpt-4o-mini` |

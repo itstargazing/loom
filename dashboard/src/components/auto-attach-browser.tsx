@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { EmptyState } from "@/components/panel";
 import { RelativeTime } from "@/components/relative-time";
+import { apiErrorMessage } from "@/lib/api-error";
 import { hostnameOf } from "@/lib/format";
 import type { AutoAttachMatch, RecentDocument } from "@/lib/types";
 
@@ -19,9 +20,7 @@ async function proxyJson<T>(path: string, init?: RequestInit): Promise<T> {
   if (response.status === 204) return undefined as T;
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const detail =
-      typeof body.detail === "string" ? body.detail : `Request failed (${response.status})`;
-    throw new Error(detail);
+    throw new Error(apiErrorMessage(body, `Request failed (${response.status})`));
   }
   return body as T;
 }

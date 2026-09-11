@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import CurrentUserId
-from app.schemas.digest import DigestActionIn, DigestOut
-from app.services.digest import apply_digest_action, load_digest
+from app.schemas.digest import DigestActionIn, DigestMissingFieldsDetail, DigestOut
+from app.services.digest import DigestMissingFieldsError, apply_digest_action, load_digest
 
 router = APIRouter(prefix="/api/digest", tags=["digest"])
 
@@ -35,9 +35,22 @@ async def post_digest_action(
             classification_id=classification_id,
             action=payload.action,
             category=payload.category,
+            fields=payload.fields,
         )
     except KeyError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    except DigestMissingFieldsError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=DigestMissingFieldsDetail(
+                message=str(error),
+                category=error.category,
+                fields=error.missing,
+            ).model_dump(by_alias=True),
+        )
     except ValueError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "bad_request", "message": str(error)},
+        )
     return DigestOut.model_validate(await load_digest(db, user_id))

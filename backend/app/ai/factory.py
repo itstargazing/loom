@@ -121,3 +121,8 @@ async def close_ai_client() -> None:
     else:
         _embed_client = None
     _local_client = None
+
+
+async def reset_ai_clients() -> None:
+    """Drop cached clients so the next call rebuilds from current settings."""
+    await close_ai_client()

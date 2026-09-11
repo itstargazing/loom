@@ -1,6 +1,5 @@
 from datetime import datetime
 from typing import Any
-from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
@@ -48,3 +47,17 @@ class DigestActionIn(BaseModel):
 
     action: str = Field(pattern="^(accept|reassign|discard)$")
     category: str | None = None
+    #  Optional extracted fields for reassign (e.g. deadline_title + deadline_date).
+    #  Keys may be camelCase or snake_case; the service normalizes them.
+    fields: dict[str, Any] | None = None
+
+
+class DigestMissingFieldsDetail(BaseModel):
+    """Structured 400 body the digest UI can render without dumping Pydantic."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    code: str = "missing_fields"
+    message: str
+    category: str
+    fields: list[str]

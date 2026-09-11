@@ -39,6 +39,24 @@ def test_digest_grouping_labels_cover_pending():
     assert CATEGORY_GROUP_LABELS["glossary_term"] == "Glossary"
 
 
+def test_stub_classifies_deadline_shaped_highlights():
+    from app.ai.stub_client import _classify_selection
+
+    items = _classify_selection(
+        "Final paper due December 12, 2026",
+        "Syllabus: Final paper due December 12, 2026 at 11:59pm.",
+        "https://courses.example.edu/cs101",
+        "CS 101 Syllabus",
+    )
+    categories = [item.category for item in items]
+    assert "deadline" in categories
+    deadline = next(item for item in items if item.category == "deadline")
+    assert deadline.fields.deadline_date
+    assert "paper" in (deadline.fields.deadline_title or "").lower() or "Final" in (
+        deadline.fields.deadline_title or ""
+    )
+
+
 def test_lexical_score_ranks_keyword_overlap():
     from app.services.embeddings import lexical_score
 

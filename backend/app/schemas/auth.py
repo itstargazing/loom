@@ -19,11 +19,8 @@ class AccountOut(BaseModel):
     auth_mode: str
     created_at: datetime
     updated_at: datetime
-    #  Explicit so the UI can say "stub token" vs future session expiry.
-    session_note: str = (
-        "Authenticated with the shared development bearer token. "
-        "Phase 15 will replace this with Clerk/Supabase sessions."
-    )
+    #  Filled by the auth router from the live AUTH_MODE setting.
+    session_note: str = ""
 
 
 class AccountPatch(BaseModel):
@@ -43,9 +40,7 @@ class LogoutOut(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     ok: bool = True
-    detail: str = (
-        "Stub auth has no server-side session. Clear the bearer token on the client."
-    )
+    detail: str = "Clear the bearer token on the client to end this session."
 
 
 class DeleteAccountIn(BaseModel):

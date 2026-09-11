@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { apiErrorMessage } from "@/lib/api-error";
 import type { Account } from "@/lib/types";
 
 async function proxyJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -18,11 +19,7 @@ async function proxyJson<T>(path: string, init?: RequestInit): Promise<T> {
   }
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const detail =
-      typeof body.detail === "string"
-        ? body.detail
-        : `Request failed (${response.status})`;
-    throw new Error(detail);
+    throw new Error(apiErrorMessage(body, `Request failed (${response.status})`));
   }
   return body as T;
 }
@@ -89,9 +86,18 @@ export function AccountBrowser({ initial }: { initial: Account }) {
     return (
       <div className="flex flex-col gap-lg">
         <p className="text-sm text-text-secondary">
-          All LOOM data for this stub user is gone. The shared development bearer
-          is still valid, so the next page load will recreate an empty profile
-          rather than signing you out.
+          {account.authMode === "jwt" ? (
+            <>
+              All LOOM data for this JWT subject was deleted. The next request
+              with the same token recreates an empty profile.
+            </>
+          ) : (
+            <>
+              All LOOM data for this stub user is gone. The shared development bearer
+              is still valid, so the next page load will recreate an empty profile
+              rather than signing you out.
+            </>
+          )}
         </p>
         <button
           type="button"
@@ -152,10 +158,20 @@ export function AccountBrowser({ initial }: { initial: Account }) {
           Session
         </h2>
         <p className="text-sm text-text-secondary">
-          Stub auth has no server-side session. The dashboard token lives in{" "}
-          <span className="loom-mono">LOOM_API_TOKEN</span>. Signing out here
-          only tells the client to drop its copy; it does not revoke the shared
-          development bearer.
+          {account.authMode === "jwt" ? (
+            <>
+              JWT auth has no server-side session store. Signing out here only
+              tells the client to drop its bearer; revoke the token in your
+              identity provider if needed.
+            </>
+          ) : (
+            <>
+              Stub auth has no server-side session. The dashboard token lives in{" "}
+              <span className="loom-mono">LOOM_API_TOKEN</span>. Signing out here
+              only tells the client to drop its copy; it does not revoke the shared
+              development bearer.
+            </>
+          )}
         </p>
         <button
           type="button"

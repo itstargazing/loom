@@ -19,6 +19,7 @@ class CaptureEmitter {
             payload,
             sourceUrl: location.href,
             pageTitle: document.title,
+            referringUrl: document.referrer || undefined,
             timestamp: new Date().toISOString(),
         };
         if (this.queue.length >= MAX_QUEUE_SIZE) {

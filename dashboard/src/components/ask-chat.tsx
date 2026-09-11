@@ -5,25 +5,9 @@ import { useSearchParams } from "next/navigation";
 
 import { MarkdownDoc } from "@/components/markdown-doc";
 import { SourceLink } from "@/components/source-link";
+import { apiErrorMessage } from "@/lib/api-error";
 import { hostnameOf } from "@/lib/format";
 import type { AskAnswer, Brief } from "@/lib/types";
-
-function errorMessage(body: unknown, fallback: string): string {
-  if (body && typeof body === "object" && "detail" in body) {
-    const detail = (body as { detail: unknown }).detail;
-    if (typeof detail === "string") return detail;
-    if (Array.isArray(detail)) {
-      return detail
-        .map((item) =>
-          item && typeof item === "object" && "msg" in item
-            ? String((item as { msg: unknown }).msg)
-            : String(item),
-        )
-        .join("; ");
-    }
-  }
-  return fallback;
-}
 
 function fileStem(topic: string): string {
   const cleaned = topic.replace(/[<>:"/\\|?*]+/g, " ").trim().slice(0, 40);
@@ -61,7 +45,7 @@ export function AskChat() {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(errorMessage(body, "Ask failed"));
+        throw new Error(apiErrorMessage(body, "Ask failed"));
       }
       setAnswer(body as AskAnswer);
     } catch (caught) {
@@ -88,7 +72,7 @@ export function AskChat() {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(errorMessage(body, "Could not generate a brief"));
+        throw new Error(apiErrorMessage(body, "Could not generate a brief"));
       }
       setBrief(body as Brief);
     } catch (caught) {

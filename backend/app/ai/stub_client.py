@@ -281,6 +281,29 @@ def _classify_selection(
     if claim_item is not None:
         items.append(claim_item)
 
+    date = _first_match(DATE_PATTERN, f"{text} {context}")
+    if date and DEADLINE_HINTS.search(f"{text} {context}"):
+        title = text.strip() if word_count <= 24 else (page_title or text[:120]).strip()
+        kind = (
+            "assignment_due"
+            if re.search(r"\b(paper|assignment|essay|homework|project)\b", text, re.I)
+            else "exam"
+            if re.search(r"\b(exam|midterm|final)\b", text, re.I)
+            else "other"
+        )
+        items.append(
+            ClassificationItem(
+                category="deadline",
+                confidence=0.55,
+                reason="Selection contains a date and deadline wording.",
+                fields=ExtractedFields.of(
+                    deadline_title=title or "Untitled deadline",
+                    deadline_date=date,
+                    deadline_kind=kind,  # type: ignore[arg-type]
+                ),
+            )
+        )
+
     if word_count > GLOSSARY_MAX_WORDS and not items:
         items.append(
             ClassificationItem(

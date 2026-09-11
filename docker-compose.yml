@@ -37,13 +37,27 @@ services:
       DATABASE_URL: postgresql+asyncpg://loom:loom@postgres:5432/loom
       REDIS_URL: redis://redis:6379/0
       CORS_ORIGINS: http://localhost:3000
-      STUB_AUTH_TOKEN: loom-dev-token
-      # Defaults to the offline heuristic classifier. Set AI_PROVIDER=openai and
-      # AI_API_KEY in a local .env to use a real model.
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      AUTH_MODE: ${AUTH_MODE:-stub}
+      STUB_AUTH_TOKEN: ${STUB_AUTH_TOKEN:-loom-dev-token}
+      JWT_SECRET: ${JWT_SECRET:-loom-dev-jwt-secret}
+      JWT_ALGORITHMS: ${JWT_ALGORITHMS:-HS256}
+      JWT_JWKS_URL: ${JWT_JWKS_URL:-}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-}
+      JWT_ISSUER: ${JWT_ISSUER:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0}
+      # Defaults to the offline heuristic classifier. Set AI_PROVIDER=claude|openai
+      # and the matching key in a local .env for real classification.
       AI_PROVIDER: ${AI_PROVIDER:-stub}
       AI_API_KEY: ${AI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-5}
       AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
       AI_BASE_URL: ${AI_BASE_URL:-https://api.openai.com/v1}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-stub}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,6 +69,8 @@ services:
       sh -c "alembic upgrade head &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
+  # One consumer group member. Scale with `docker compose up --scale worker=N`
+  # only after Redis is healthy; each replica claims idle entries via XAUTOCLAIM.
   worker:
     build:
       context: ./backend
@@ -62,10 +78,18 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://loom:loom@postgres:5432/loom
       REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      AUTH_MODE: ${AUTH_MODE:-stub}
       AI_PROVIDER: ${AI_PROVIDER:-stub}
       AI_API_KEY: ${AI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-5}
       AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
       AI_BASE_URL: ${AI_BASE_URL:-https://api.openai.com/v1}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-stub}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      SENTRY_DSN: ${SENTRY_DSN:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -77,6 +101,7 @@ services:
     volumes:
       - ./backend:/app
     command: python -m app.worker
+    restart: unless-stopped
 
   dashboard:
     build:
@@ -91,7 +116,10 @@ services:
       # token is never sent to the browser and needs no NEXT_PUBLIC_ prefix.
       # Reached over the compose network, not localhost.
       LOOM_API_URL: http://backend:8000
-      LOOM_API_TOKEN: loom-dev-token
+      # Must match AUTH_MODE: stub token, or a JWT minted for the same user.
+      LOOM_API_TOKEN: ${LOOM_API_TOKEN:-loom-dev-token}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
     depends_on:
       - backend
     volumes:

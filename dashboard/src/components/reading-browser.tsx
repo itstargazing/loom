@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { EmptyState } from "@/components/panel";
 import { RelativeTime } from "@/components/relative-time";
+import { apiErrorMessage } from "@/lib/api-error";
 import { hostnameOf } from "@/lib/format";
 import type { Collection, ReadingCompilerEntry } from "@/lib/types";
 
@@ -19,9 +20,7 @@ async function proxy<T>(path: string, init?: RequestInit): Promise<T> {
   if (response.status === 204) return undefined as T;
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const detail =
-      typeof body.detail === "string" ? body.detail : `Request failed (${response.status})`;
-    throw new Error(detail);
+    throw new Error(apiErrorMessage(body, `Request failed (${response.status})`));
   }
   return body as T;
 }
@@ -191,9 +190,7 @@ export function ReadingBrowser({
       const response = await fetch(`/api/proxy/skills/reading/export?${params.toString()}`);
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        throw new Error(
-          typeof body.detail === "string" ? body.detail : `Export failed (${response.status})`,
-        );
+        throw new Error(apiErrorMessage(body, `Export failed (${response.status})`));
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);

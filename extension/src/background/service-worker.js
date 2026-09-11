@@ -7,6 +7,7 @@ import { bypassNextNavigation, initPdfInterceptor } from "../pdf/interceptor";
 import { captureBus } from "./capture-bus";
 import { backgroundPdfStore } from "./pdf-store";
 import { getSyncStatus, initSync, queueForSync, syncNow } from "./sync";
+import { fetchDocumentFile, matchUploadField } from "./auto-attach";
 import { notifyClassifiedSkills } from "./glossary-notify";
 initPdfInterceptor();
 initSync();
@@ -109,6 +110,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             const url = backgroundPdfStore.resolveUrl(tabId, message.url);
             const form = url ? backgroundPdfStore.getForm(url) : undefined;
             sendResponse(form ? { ok: true, form } : { ok: false, error: "No PDF form available" });
+            return true;
+        }
+        case "auto-attach:match": {
+            void matchUploadField({
+                labelText: String(message.labelText ?? ""),
+                surroundingText: String(message.surroundingText ?? ""),
+                fieldName: message.fieldName ?? null,
+                accept: message.accept ?? null,
+            })
+                .then((match) => sendResponse({ ok: true, match }))
+                .catch((error) => sendResponse({
+                ok: false,
+                error: error instanceof Error ? error.message : "Match failed",
+            }));
+            return true;
+        }
+        case "auto-attach:fetch-file": {
+            void fetchDocumentFile(String(message.documentId ?? ""))
+                .then((file) => {
+                if (!file) {
+                    sendResponse({ ok: false, error: "No cached file" });
+                    return;
+                }
+                sendResponse({
+                    ok: true,
+                    bytes: Array.from(new Uint8Array(file.bytes)),
+                    filename: file.filename,
+                    mimeType: file.mimeType,
+                });
+            })
+                .catch((error) => sendResponse({
+                ok: false,
+                error: error instanceof Error ? error.message : "Fetch failed",
+            }));
             return true;
         }
         default:

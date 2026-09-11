@@ -29,7 +29,7 @@ async def _ensure_account(db: AsyncSession, user_id: str) -> UserAccount:
     account = UserAccount(
         user_id=user_id,
         display_name=user_id,
-        auth_mode="stub",
+        auth_mode=(settings.auth_mode or "stub").strip().lower(),
     )
     db.add(account)
     await db.commit()
@@ -37,14 +37,28 @@ async def _ensure_account(db: AsyncSession, user_id: str) -> UserAccount:
     return account
 
 
+def _session_note(mode: str) -> str:
+    if mode == "jwt":
+        return (
+            "Authenticated with a JWT. Your user id is the token subject (sub). "
+            "Rotate or expire tokens in your identity provider (Clerk/Supabase)."
+        )
+    return (
+        "Authenticated with the shared development bearer token. "
+        "Every client shares one user — set AUTH_MODE=jwt before multi-user release."
+    )
+
+
 def _out(account: UserAccount) -> AccountOut:
+    mode = (settings.auth_mode or "stub").strip().lower()
     return AccountOut(
         user_id=account.user_id,
         display_name=account.display_name,
         email=account.email,
-        auth_mode=account.auth_mode,
+        auth_mode=mode,
         created_at=account.created_at,
         updated_at=account.updated_at,
+        session_note=_session_note(mode),
     )
 
 
@@ -76,7 +90,20 @@ async def patch_me(
 
 @router.post("/logout", response_model=LogoutOut, summary="Client logout helper")
 async def logout(_user_id: CurrentUserId) -> LogoutOut:
-    return LogoutOut()
+    mode = (settings.auth_mode or "stub").strip().lower()
+    if mode == "jwt":
+        return LogoutOut(
+            detail=(
+                "JWT auth has no server-side session store. "
+                "Clear the bearer token on the client (and revoke it in Clerk/Supabase if needed)."
+            )
+        )
+    return LogoutOut(
+        detail=(
+            "Stub auth has no server-side session. "
+            "Clear LOOM_API_TOKEN / the extension sync token on the client."
+        )
+    )
 
 
 @router.delete(
@@ -94,13 +121,27 @@ async def delete_me(
     await purge_user_data(db, user_id)
 
 
-@router.get("/status", summary="Auth mode and stub token hints (no secrets)")
+@router.get("/status", summary="Auth mode and readiness (no secrets)")
 async def auth_status(user_id: CurrentUserId) -> dict[str, str | bool]:
+    mode = (settings.auth_mode or "stub").strip().lower()
+    jwt_ready = mode == "jwt" and bool(
+        settings.jwt_jwks_url.strip() or settings.jwt_secret.strip()
+    )
+    if mode == "jwt":
+        detail = (
+            "JWT auth is active. Each token subject maps to its own LOOM user id."
+        )
+    else:
+        detail = (
+            "Stub bearer auth is active — every client shares one user. "
+            "Set AUTH_MODE=jwt before multi-user release."
+        )
     return {
         "authenticated": True,
         "userId": user_id,
-        "authMode": "stub",
-        "tokenConfigured": bool(settings.stub_auth_token),
-        "providerReady": False,
-        "detail": "Stub bearer auth is active. Wire Clerk/Supabase to replace it.",
+        "authMode": mode,
+        "environment": settings.environment,
+        "tokenConfigured": bool(settings.stub_auth_token) if mode == "stub" else jwt_ready,
+        "providerReady": jwt_ready,
+        "detail": detail,
     }

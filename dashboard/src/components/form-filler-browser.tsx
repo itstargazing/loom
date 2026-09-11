@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { EmptyState, Section } from "@/components/panel";
 import { RelativeTime } from "@/components/relative-time";
+import { apiErrorMessage } from "@/lib/api-error";
 import type {
   DocumentMatch,
   FormDocument,
@@ -30,18 +31,7 @@ const SUGGESTED_KEYS = [
 
 async function readError(response: Response): Promise<string> {
   const body = await response.json().catch(() => ({}));
-  const detail = body && typeof body === "object" ? (body as { detail?: unknown }).detail : undefined;
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) {
-    const parts = detail.map((item) => {
-      if (item && typeof item === "object" && "msg" in item) {
-        return String((item as { msg: unknown }).msg);
-      }
-      return String(item);
-    });
-    if (parts.length) return parts.join("; ");
-  }
-  return `Request failed (${response.status})`;
+  return apiErrorMessage(body, `Request failed (${response.status})`);
 }
 
 async function proxyJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -55,9 +45,7 @@ async function proxyJson<T>(path: string, init?: RequestInit): Promise<T> {
   if (response.status === 204) return undefined as T;
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const detail =
-      typeof body.detail === "string" ? body.detail : `Request failed (${response.status})`;
-    throw new Error(detail);
+    throw new Error(apiErrorMessage(body, `Request failed (${response.status})`));
   }
   return body as T;
 }

@@ -27,12 +27,22 @@ class Settings(BaseSettings):
     #  Viewer uploads hit the API directly; the extension id is not known ahead.
     cors_origin_regex: str = r"chrome-extension://.*"
 
-    # --- Stub auth -------------------------------------------------------
+    # --- Auth ------------------------------------------------------------
+    #  development | production. Production refuses AUTH_MODE=stub at startup.
+    environment: str = "development"
+    #  stub = shared bearer (local only). jwt = per-user tokens (Clerk/Supabase/
+    #  mint_dev_jwt). Set AUTH_MODE=jwt before more than one real user.
+    auth_mode: str = "stub"
     # Shared secret between the extension, dashboard, and this API. Every
-    # request maps to a single development user. Swap ``get_current_user_id``
-    # when Clerk/Supabase sessions land; callers already depend on that hook.
+    # request maps to a single development user when AUTH_MODE=stub.
     stub_auth_token: str = "loom-dev-token"
     stub_user_id: str = "dev-user"
+    jwt_secret: str = "loom-dev-jwt-secret"
+    jwt_algorithms: str = "HS256"
+    #  Optional JWKS for Clerk/Supabase asymmetric JWTs (RS256).
+    jwt_jwks_url: str = ""
+    jwt_audience: str = ""
+    jwt_issuer: str = ""
 
     #  Caps the synchronous reclassify endpoint (the expensive user-triggered
     #  AI path). The background worker is bounded separately by batch size.
@@ -40,7 +50,11 @@ class Settings(BaseSettings):
     llm_rate_limit_per_minute: int = 20
     #  Below this, a classification is held for digest review instead of routed.
     classification_auto_route_min_confidence: float = 0.5
-    jwt_secret: str = "loom-dev-jwt-secret"
+
+    # --- Observability ---------------------------------------------------
+    #  Optional. When set, errors are reported to Sentry.
+    sentry_dsn: str = ""
+    sentry_traces_sample_rate: float = 0.0
 
     # --- Capture ingest --------------------------------------------------
     max_events_per_batch: int = 100
