@@ -1,23 +1,13 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { AskBar } from "@/components/ask-bar";
 import { NotificationBell } from "@/components/notification-bell";
 import { Sidebar } from "@/components/sidebar";
 
-function isAuthRoute(pathname: string): boolean {
-  return pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up");
-}
-
-/** Dashboard chrome. Auth pages render children only (no sidebar). */
+/** Dashboard chrome for authenticated (or stub) app routes. */
 export function AppShell({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
-  if (isAuthRoute(pathname)) {
-    return <>{children}</>;
-  }
-
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       <Sidebar />

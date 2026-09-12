@@ -2,7 +2,6 @@ import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-import { AppShell } from "@/components/app-shell";
 import { isClerkConfigured } from "@/lib/auth-mode";
 
 import "./globals.css";
@@ -34,9 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <Providers>
-          <AppShell>{children}</AppShell>
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

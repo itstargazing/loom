@@ -70,9 +70,11 @@ const preset = {
         },
         "thread-draw": {
           "0%": { strokeDashoffset: "1", opacity: "0" },
-          "14%": { opacity: "1" },
-          "72%": { strokeDashoffset: "0", opacity: "1" },
-          "100%": { strokeDashoffset: "0", opacity: "0" },
+          "12%": { opacity: "1" },
+          "42%": { strokeDashoffset: "0", opacity: "1" },
+          "62%": { strokeDashoffset: "0", opacity: "0.75" },
+          "78%": { strokeDashoffset: "0", opacity: "0" },
+          "100%": { strokeDashoffset: "1", opacity: "0" },
         },
       },
       animation: {
@@ -80,7 +82,7 @@ const preset = {
         "fade-out": "fade-out 200ms ease-in forwards",
         "slide-up": "slide-up 250ms ease-out forwards",
         "slide-down": "slide-down 250ms ease-out forwards",
-        "thread-draw": "thread-draw 1.8s ease-out forwards",
+        "thread-draw": "thread-draw 4.8s ease-in-out infinite",
       },
     },
   },

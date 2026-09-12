@@ -25,7 +25,10 @@ async def test_auth_routes_require_a_token():
         ).status_code == 403
 
 
-async def test_auth_status_describes_stub_mode():
+async def test_auth_status_describes_stub_mode(monkeypatch: pytest.MonkeyPatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "auth_mode", "stub")
     app.dependency_overrides[get_current_user_id] = lambda: "dev-user"
     try:
         async with AsyncClient(

@@ -1,4 +1,4 @@
-/** Hand-drawn capture → route threads. The only load animation on the page. */
+/** Hand-drawn capture → route threads. Loops while the hero is on screen. */
 
 export function ThreadIllustration({ className }: { className?: string }) {
   return (

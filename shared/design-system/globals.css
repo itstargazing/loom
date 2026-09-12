@@ -372,15 +372,19 @@
 
   @media (prefers-reduced-motion: no-preference) {
     .loom-thread-a {
-      animation: thread-draw 1.8s ease-out forwards;
+      animation: thread-draw 4.8s ease-in-out infinite;
     }
 
     .loom-thread-b {
-      animation: thread-draw 1.7s ease-out 0.22s forwards;
+      animation: thread-draw 5.2s ease-in-out 0.45s infinite;
     }
 
     .loom-thread-c {
-      animation: thread-draw 1.9s ease-out 0.44s forwards;
+      animation: thread-draw 5.6s ease-in-out 0.9s infinite;
+    }
+
+    .loom-thread-dot {
+      animation: thread-dot-pulse 3.2s ease-in-out infinite;
     }
   }
 
@@ -397,15 +401,33 @@
     stroke-dashoffset: 1;
     opacity: 0;
   }
-  14% {
+  12% {
     opacity: 1;
   }
-  72% {
+  42% {
     stroke-dashoffset: 0;
     opacity: 1;
   }
-  100% {
+  62% {
+    stroke-dashoffset: 0;
+    opacity: 0.75;
+  }
+  78% {
     stroke-dashoffset: 0;
     opacity: 0;
+  }
+  100% {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+}
+
+@keyframes thread-dot-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.85;
   }
 }

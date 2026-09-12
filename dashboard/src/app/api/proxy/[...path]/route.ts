@@ -1,6 +1,8 @@
+import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
 import { resolveApiBearerToken } from "@/lib/api-token";
+import { isClerkConfigured } from "@/lib/auth-mode";
 
 /**
  * Server-side proxy so the browser can mutate skill stores without holding a
@@ -17,6 +19,10 @@ async function proxy(
   request: NextRequest,
   path: string[],
 ): Promise<NextResponse> {
+  if (isClerkConfigured()) {
+    await auth.protect();
+  }
+
   let token: string;
   try {
     token = await resolveApiBearerToken();
