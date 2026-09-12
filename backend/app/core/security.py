@@ -128,3 +128,26 @@ def assert_auth_safe_for_environment() -> None:
         )
     else:
         logger.info("AUTH_MODE=%s (JWT subjects map to LOOM user ids).", mode)
+
+
+def assert_ai_safe_for_environment() -> None:
+    """Call from app lifespan. Production must not silently run keyword heuristics."""
+    env = (settings.environment or "development").strip().lower()
+    if env != "production":
+        return
+
+    ai_provider = (settings.ai_provider or "stub").strip().lower()
+    embedding_provider = (settings.embedding_provider or "stub").strip().lower()
+
+    if ai_provider == "stub":
+        raise RuntimeError(
+            "Refusing to start: ENVIRONMENT=production with AI_PROVIDER=stub. "
+            "Set AI_PROVIDER=claude (with ANTHROPIC_API_KEY) or AI_PROVIDER=openai "
+            "(with AI_API_KEY) before serving real users."
+        )
+    if embedding_provider == "stub":
+        raise RuntimeError(
+            "Refusing to start: ENVIRONMENT=production with EMBEDDING_PROVIDER=stub. "
+            "Set EMBEDDING_PROVIDER=openai and EMBEDDING_API_KEY (or AI_API_KEY) "
+            "before serving real users."
+        )

@@ -8,7 +8,11 @@ from fastapi.security import HTTPAuthorizationCredentials
 from httpx import ASGITransport, AsyncClient
 
 from app.core.config import settings
-from app.core.security import assert_auth_safe_for_environment, get_current_user_id
+from app.core.security import (
+    assert_ai_safe_for_environment,
+    assert_auth_safe_for_environment,
+    get_current_user_id,
+)
 from app.main import app
 
 
@@ -84,3 +88,26 @@ def test_production_allows_jwt(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(settings, "environment", "production")
     monkeypatch.setattr(settings, "auth_mode", "jwt")
     assert_auth_safe_for_environment()
+
+
+def test_production_refuses_stub_ai(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(settings, "environment", "production")
+    monkeypatch.setattr(settings, "ai_provider", "stub")
+    monkeypatch.setattr(settings, "embedding_provider", "openai")
+    with pytest.raises(RuntimeError, match="AI_PROVIDER=stub"):
+        assert_ai_safe_for_environment()
+
+
+def test_production_refuses_stub_embeddings(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(settings, "environment", "production")
+    monkeypatch.setattr(settings, "ai_provider", "claude")
+    monkeypatch.setattr(settings, "embedding_provider", "stub")
+    with pytest.raises(RuntimeError, match="EMBEDDING_PROVIDER=stub"):
+        assert_ai_safe_for_environment()
+
+
+def test_production_allows_real_ai_providers(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(settings, "environment", "production")
+    monkeypatch.setattr(settings, "ai_provider", "claude")
+    monkeypatch.setattr(settings, "embedding_provider", "openai")
+    assert_ai_safe_for_environment()

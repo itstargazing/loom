@@ -116,8 +116,12 @@ services:
       # token is never sent to the browser and needs no NEXT_PUBLIC_ prefix.
       # Reached over the compose network, not localhost.
       LOOM_API_URL: http://backend:8000
-      # Must match AUTH_MODE: stub token, or a JWT minted for the same user.
+      # Stub-only fallback when Clerk keys are absent (local). Production must use Clerk.
       LOOM_API_TOKEN: ${LOOM_API_TOKEN:-loom-dev-token}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
       SENTRY_DSN: ${SENTRY_DSN:-}
       NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
     depends_on:

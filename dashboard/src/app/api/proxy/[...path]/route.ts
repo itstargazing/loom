@@ -1,26 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { resolveApiBearerToken } from "@/lib/api-token";
+
 /**
- * Server-side proxy so the browser can mutate skill stores without holding the
- * backend token. The dashboard already fetches on the server with LOOM_API_TOKEN;
- * this is the equivalent for PATCH/DELETE/POST from client components.
+ * Server-side proxy so the browser can mutate skill stores without holding a
+ * long-lived backend token. Forwards the signed-in user's Clerk session JWT
+ * (or the local stub token when Clerk is not configured).
  *
  * Request and response bodies are forwarded as bytes so PDF uploads and zip
  * downloads are not corrupted by UTF-8 text decoding.
  */
 
 const API_BASE_URL = process.env.LOOM_API_URL ?? "http://localhost:8000";
-const AUTH_TOKEN = process.env.LOOM_API_TOKEN ?? "loom-dev-token";
 
 async function proxy(
   request: NextRequest,
   path: string[],
 ): Promise<NextResponse> {
+  let token: string;
+  try {
+    token = await resolveApiBearerToken();
+  } catch (error) {
+    return NextResponse.json(
+      {
+        detail:
+          error instanceof Error ? error.message : "Not authenticated",
+      },
+      { status: 401 },
+    );
+  }
+
   const upstream = new URL(`/api/${path.join("/")}`, API_BASE_URL);
   upstream.search = request.nextUrl.search;
 
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${AUTH_TOKEN}`,
+    Authorization: `Bearer ${token}`,
   };
   const contentType = request.headers.get("content-type") ?? "";
   const method = request.method;

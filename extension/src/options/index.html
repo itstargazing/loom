@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LOOM Options</title>
+    <link rel="stylesheet" href="../styles/globals.css" />
+  </head>
+  <body>
+    <div class="loom-glass loom-glass-bright loom-sheen-tl m-md max-w-lg p-lg">
+      <header class="mb-lg">
+        <h1 class="font-display text-lg font-semibold tracking-tight">LOOM sync</h1>
+        <p class="mt-1 text-sm text-text-secondary">
+          Point the extension at your API and paste the bearer token for
+          <em>your</em> account. For Clerk, copy a session JWT from the dashboard
+          Account page (or mint one while signed in). Local stub auth can use
+          <span class="loom-mono">loom-dev-token</span>.
+        </p>
+      </header>
+
+      <form id="sync-form" class="flex flex-col gap-md">
+        <label class="flex flex-col gap-xs text-sm">
+          API base URL
+          <input
+            id="api-base-url"
+            class="loom-input"
+            type="url"
+            placeholder="http://localhost:8000"
+            autocomplete="off"
+            required
+          />
+        </label>
+        <label class="flex flex-col gap-xs text-sm">
+          Auth bearer token
+          <input
+            id="auth-token"
+            class="loom-input"
+            type="password"
+            placeholder="Paste your token"
+            autocomplete="off"
+          />
+        </label>
+        <p id="token-hint" class="text-xs text-text-secondary"></p>
+        <div class="flex items-center gap-sm">
+          <button type="submit" class="loom-btn">Save</button>
+          <button type="button" id="clear-token" class="loom-btn loom-btn-secondary">
+            Clear token
+          </button>
+        </div>
+        <p id="save-status" class="text-xs text-text-secondary"></p>
+      </form>
+    </div>
+    <script type="module" src="./options.ts"></script>
+  </body>
+</html>

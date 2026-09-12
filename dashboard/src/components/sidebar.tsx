@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { EXTRA_SKILL_LINKS, SKILL_VIEWS } from "@/lib/skills";
+import { SidebarAuth } from "@/components/sidebar-auth";
+import { isClerkConfigured } from "@/lib/auth-mode";
 
 function NavLink({ href, label }: { href: string; label: string }) {
   const pathname = usePathname();
@@ -71,6 +73,11 @@ export function Sidebar() {
           <NavLink href="/privacy" label="Local-only" />
           <NavLink href="/style-guide" label="Style guide" />
         </div>
+        {isClerkConfigured() ? (
+          <div className="mt-sm">
+            <SidebarAuth />
+          </div>
+        ) : null}
       </nav>
 
       <nav
@@ -103,6 +110,7 @@ export function Sidebar() {
           <NavLink href="/account" label="Account" />
           <NavLink href="/privacy" label="Local-only" />
           <NavLink href="/style-guide" label="Style guide" />
+          {isClerkConfigured() ? <SidebarAuth /> : null}
         </div>
       </nav>
     </>

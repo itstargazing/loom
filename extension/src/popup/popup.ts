@@ -106,8 +106,16 @@ function initSyncSection(): void {
   document.getElementById("sync-now")?.addEventListener("click", () => {
     void chrome.runtime.sendMessage({ type: "sync:now" }).then(pollSyncStatus);
   });
+  document.getElementById("open-sync-options")?.addEventListener("click", () => {
+    void chrome.runtime.openOptionsPage();
+  });
 
   void pollSyncStatus();
+  void loadSyncConfig().then((config) => {
+    if (!config.authToken) {
+      setBadge("sync-badge", "warning", "Set your token in Options");
+    }
+  });
   setInterval(() => void pollSyncStatus(), SYNC_POLL_MS);
 }
 

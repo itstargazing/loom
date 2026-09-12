@@ -3,6 +3,7 @@ import { HeroPanel } from "@/components/home/hero-panel";
 import { PipelineStage } from "@/components/home/pipeline-stage";
 import { StatsRow } from "@/components/home/stats-row";
 import { ErrorPanel } from "@/components/panel";
+import { WarmingPanel } from "@/components/warming-panel";
 import { getAccount, getOverview, getPrivacySettings, getSkillEntries, getWatchedSets } from "@/lib/api";
 import { buildHomeView } from "@/lib/home-view";
 import type { Contradiction, Deadline } from "@/lib/types";
@@ -32,7 +33,11 @@ export default async function OverviewPage() {
   return (
     <div className="flex w-full flex-col gap-lg">
       {!overview.ok ? (
-        <ErrorPanel title="Could not load dashboard data" error={overview.error} />
+        overview.warming ? (
+          <WarmingPanel />
+        ) : (
+          <ErrorPanel title="Could not load dashboard data" error={overview.error} />
+        )
       ) : null}
       <HeroPanel headline={view.headline} empty={view.empty} />
       <PipelineStage stage={view.stage} />

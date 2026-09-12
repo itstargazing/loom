@@ -2,8 +2,8 @@
  * Backend connection settings.
  *
  * Read from chrome.storage.sync so a deployed backend can be pointed at without
- * a rebuild; the defaults cover local development. Phase 15 replaces the stub
- * token with a real session token managed by the auth provider.
+ * a rebuild. Paste your own session/JWT token here — do not ship a shared
+ * production credential in the default build.
  */
 
 export interface SyncConfig {
@@ -13,7 +13,9 @@ export interface SyncConfig {
 
 export const DEFAULT_SYNC_CONFIG: SyncConfig = {
   apiBaseUrl: "http://localhost:8000",
-  authToken: "loom-dev-token",
+  // Empty by default so a shared release build does not impersonate one user.
+  // Local stub: paste loom-dev-token (or a Clerk JWT) in the options page.
+  authToken: "",
 };
 
 const STORAGE_KEY = "loom:sync-config";
@@ -29,4 +31,17 @@ export async function loadSyncConfig(): Promise<SyncConfig> {
   } catch {
     return { ...DEFAULT_SYNC_CONFIG };
   }
+}
+
+export async function saveSyncConfig(
+  next: Partial<SyncConfig>,
+): Promise<SyncConfig> {
+  const current = await loadSyncConfig();
+  const merged: SyncConfig = {
+    apiBaseUrl: next.apiBaseUrl?.trim() || current.apiBaseUrl,
+    authToken:
+      next.authToken !== undefined ? next.authToken.trim() : current.authToken,
+  };
+  await chrome.storage.sync.set({ [STORAGE_KEY]: merged });
+  return merged;
 }

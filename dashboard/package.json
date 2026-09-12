@@ -15,6 +15,8 @@
     "node": ">=20.9.0"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.9.2",
+    "@sentry/nextjs": "^10.74.0",
     "next": "^16.3.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

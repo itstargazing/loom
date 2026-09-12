@@ -88,3 +88,7 @@ export function ErrorPanel({ title, error }: { title: string; error: string }) {
     </div>
   );
 }
+
+/** Re-export warming UI used on cold starts (Render free tier, etc.). */
+export { WarmingPanel } from "@/components/warming-panel";
+

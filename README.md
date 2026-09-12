@@ -547,9 +547,9 @@ docker compose exec backend alembic upgrade head
 | `CORS_ORIGINS` | Comma-separated allowed origins | `http://localhost:3000` |
 | `STUB_AUTH_TOKEN` | Shared bearer when `AUTH_MODE=stub` (local only) | `loom-dev-token` |
 | `STUB_USER_ID` | User all stub requests map to | `dev-user` |
-| `AUTH_MODE` | `stub` (dev) or `jwt` (per-user / Clerk / Supabase) | `stub` |
-| `ENVIRONMENT` | `production` refuses stub auth at startup | `development` |
-| `JWT_SECRET` / `JWT_JWKS_URL` | HS256 secret and/or JWKS for JWT mode | see `.env.example` |
+| `AUTH_MODE` | `stub` (dev) or `jwt` (per-user / Clerk JWKS) | `stub` |
+| `ENVIRONMENT` | `production` refuses stub auth **and** stub AI/embeddings at startup | `development` |
+| `JWT_SECRET` / `JWT_JWKS_URL` | HS256 secret and/or Clerk JWKS for JWT mode | see `.env.example` |
 | `SENTRY_DSN` | Optional API (and dashboard) error reporting | — |
 | `AI_PROVIDER` | `claude`, `openai`, or `stub` (offline heuristics) | `stub` |
 | `AI_API_KEY` | Provider key; empty falls back to `stub` | — |

@@ -8,7 +8,10 @@ from app.ai import close_ai_client
 from app.core.config import settings
 from app.core.database import engine
 from app.core.redis import close_redis
-from app.core.security import assert_auth_safe_for_environment
+from app.core.security import (
+    assert_ai_safe_for_environment,
+    assert_auth_safe_for_environment,
+)
 from app.core.sentry import init_sentry
 from app.routers import (
     ask,
@@ -39,6 +42,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     init_sentry()
     assert_auth_safe_for_environment()
+    assert_ai_safe_for_environment()
     # Created up front so the very first batch has somewhere to go even if no
     # worker has started yet.
     for stream in (capture_stream, classification_stream):

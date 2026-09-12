@@ -8,23 +8,25 @@
  */
 
 import type { DashboardOverview } from "./types";
+import { resolveApiBearerToken } from "./api-token";
 
 export const API_BASE_URL = process.env.LOOM_API_URL ?? "http://localhost:8000";
 
-const AUTH_TOKEN = process.env.LOOM_API_TOKEN ?? "loom-dev-token";
+/** Per-attempt timeout. Cold Render instances often need more than one try. */
+const ATTEMPT_TIMEOUT_MS = 25_000;
+/** Total wall time across retries — enough for a spin-up after idle. */
+const MAX_WAIT_MS = 90_000;
+const MAX_ATTEMPTS = 4;
 
-/** Long enough for a cold backend, short enough not to hang a page render. */
-const TIMEOUT_MS = 8_000;
+export type ApiResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string; warming?: boolean };
 
-export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string };
-
-function describe(error: unknown): string {
+function describe(error: unknown, attemptTimeoutMs: number): string {
   if (error instanceof DOMException && error.name === "TimeoutError") {
-    return `No response from ${API_BASE_URL} within ${TIMEOUT_MS / 1000}s.`;
+    return `No response from ${API_BASE_URL} within ${Math.round(attemptTimeoutMs / 1000)}s.`;
   }
   if (error instanceof Error) {
-    // Node's fetch reports a bare "fetch failed" for a refused connection,
-    // which tells the reader nothing about what to fix.
     if (error.message === "fetch failed") {
       const onVercel =
         process.env.VERCEL === "1" &&
@@ -39,10 +41,25 @@ function describe(error: unknown): string {
   return "Unknown error";
 }
 
-export async function apiGet<T>(
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryable(error: unknown, status?: number): boolean {
+  if (status !== undefined) {
+    return status === 502 || status === 503 || status === 504;
+  }
+  if (error instanceof DOMException && error.name === "TimeoutError") return true;
+  if (error instanceof Error && error.message === "fetch failed") return true;
+  return false;
+}
+
+async function apiGetOnce<T>(
   path: string,
-  params?: Record<string, string | number>,
-): Promise<ApiResult<T>> {
+  params: Record<string, string | number> | undefined,
+  token: string,
+  timeoutMs: number,
+): Promise<ApiResult<T> & { retryable?: boolean }> {
   const url = new URL(path, API_BASE_URL);
   for (const [key, value] of Object.entries(params ?? {})) {
     url.searchParams.set(key, String(value));
@@ -51,31 +68,84 @@ export async function apiGet<T>(
   let response: Response;
   try {
     response = await fetch(url, {
-      headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      // The pipeline writes continuously, so a cached page would be misleading.
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(timeoutMs),
       cache: "no-store",
     });
   } catch (error) {
-    return { ok: false, error: describe(error) };
+    return {
+      ok: false,
+      error: describe(error, timeoutMs),
+      retryable: isRetryable(error),
+      warming: isRetryable(error),
+    };
   }
 
   if (!response.ok) {
     const hint =
       response.status === 401 || response.status === 403
-        ? " Check LOOM_API_TOKEN."
+        ? " Check that you are signed in and the backend AUTH_MODE=jwt accepts Clerk tokens."
         : "";
     return {
       ok: false,
       error: `Backend returned ${response.status} ${response.statusText}.${hint}`,
+      retryable: isRetryable(undefined, response.status),
+      warming: isRetryable(undefined, response.status),
     };
   }
 
   try {
     return { ok: true, data: (await response.json()) as T };
   } catch (error) {
-    return { ok: false, error: `Malformed response body: ${describe(error)}` };
+    return { ok: false, error: `Malformed response body: ${describe(error, timeoutMs)}` };
   }
+}
+
+export async function apiGet<T>(
+  path: string,
+  params?: Record<string, string | number>,
+): Promise<ApiResult<T>> {
+  let token: string;
+  try {
+    token = await resolveApiBearerToken();
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not resolve API token",
+    };
+  }
+
+  const started = Date.now();
+  let last: ApiResult<T> & { retryable?: boolean } = {
+    ok: false,
+    error: "No attempt made",
+  };
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const remaining = MAX_WAIT_MS - (Date.now() - started);
+    if (remaining <= 0) break;
+
+    const timeoutMs = Math.min(ATTEMPT_TIMEOUT_MS, remaining);
+    last = await apiGetOnce<T>(path, params, token, timeoutMs);
+    if (last.ok) return last;
+    if (!last.retryable || attempt === MAX_ATTEMPTS) {
+      return {
+        ok: false,
+        error: last.error,
+        warming: last.warming,
+      };
+    }
+
+    const backoff = Math.min(2_000 * 2 ** (attempt - 1), 8_000);
+    if (Date.now() - started + backoff >= MAX_WAIT_MS) break;
+    await sleep(backoff);
+  }
+
+  return {
+    ok: false,
+    error: last.error,
+    warming: true,
+  };
 }
 
 export function getOverview(activityLimit = 20): Promise<ApiResult<DashboardOverview>> {
