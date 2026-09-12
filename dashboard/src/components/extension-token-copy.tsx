@@ -4,8 +4,8 @@ import { useAuth } from "@clerk/nextjs";
 import { useState } from "react";
 
 /**
- * Lets a signed-in user copy a short-lived Clerk JWT for the Chrome extension
- * options page. Prefer a Clerk JWT template named "loom" with a longer TTL.
+ * Copies a Clerk JWT minted from the "loom" JWT template for the extension
+ * options page. Requires that template to exist in the Clerk dashboard.
  */
 export function ExtensionTokenCopy() {
   const { getToken, isSignedIn } = useAuth();
@@ -16,18 +16,21 @@ export function ExtensionTokenCopy() {
   async function copy(): Promise<void> {
     setStatus(null);
     try {
-      const token =
-        (await getToken({ template: "loom" })) ?? (await getToken());
+      const token = await getToken({ template: "loom" });
       if (!token) {
-        setStatus("No token available. Sign in again.");
+        setStatus(
+          'No “loom” JWT available. Create a Clerk JWT template named “loom”, then sign in again.',
+        );
         return;
       }
       await navigator.clipboard.writeText(token);
-      setStatus(
-        "Copied. Paste it into the extension Options page. Session tokens expire quickly — create a Clerk JWT template named “loom” for a longer-lived extension token.",
-      );
+      setStatus("Copied. Paste it into the extension Options page.");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Could not copy token");
+      setStatus(
+        error instanceof Error
+          ? error.message
+          : 'Could not copy the “loom” JWT. Check that the Clerk template exists.',
+      );
     }
   }
 
@@ -37,11 +40,12 @@ export function ExtensionTokenCopy() {
         Extension token
       </h2>
       <p className="text-sm text-text-secondary">
-        The Chrome extension needs your bearer token in Options. Copy it here,
-        then paste under LOOM → Configure API &amp; token.
+        Copies a JWT from the Clerk template named{" "}
+        <span className="loom-mono">loom</span>. Paste it under LOOM → Configure
+        API &amp; token in the extension.
       </p>
       <button type="button" className="loom-btn self-start" onClick={() => void copy()}>
-        Copy session JWT
+        Copy loom JWT
       </button>
       {status ? <p className="text-xs text-text-secondary">{status}</p> : null}
     </div>
