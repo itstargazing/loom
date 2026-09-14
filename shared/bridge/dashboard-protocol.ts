@@ -20,11 +20,18 @@ export const BRIDGE_REQUEST_TYPES = ["bridge:ping", "sync:get-status", "sync:now
 
 export type BridgeRequestType = (typeof BRIDGE_REQUEST_TYPES)[number];
 
+/** Optional body for bridge requests (currently only sync:now uses it). */
+export interface BridgeRequestPayload {
+  /** Clerk/session JWT from the signed-in dashboard, used for this sync only. */
+  authToken?: string;
+}
+
 export interface BridgeRequest {
   channel: typeof BRIDGE_CHANNEL;
   direction: "request";
   requestId: string;
   type: BridgeRequestType;
+  payload?: BridgeRequestPayload;
 }
 
 export interface BridgeResponse {

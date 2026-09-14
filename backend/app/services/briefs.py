@@ -66,7 +66,7 @@ async def generate_brief(
             f"Context: {deadline.context_snippet or '(none)'}\n"
         )
     material = "\n\n".join(numbered) or "(no related captures)"
-    limit_llm(user_id)
+    await limit_llm(user_id)
     completion = await get_ai_client().complete_text(
         TextCompletionRequest(
             system=SYSTEM,

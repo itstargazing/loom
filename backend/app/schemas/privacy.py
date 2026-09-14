@@ -23,9 +23,9 @@ class PrivacySettingsOut(BaseModel):
     effective_domains: list[str] = Field(default_factory=list)
     updated_at: datetime | None = None
     tradeoff_note: str = (
-        "Local mode classifies with on-device heuristics only — no cloud AI call. "
-        "It may be slower to improve and less accurate than the cloud model. "
-        "Events still sync to your LOOM backend so skill stores stay filled."
+        "Local-only domains skip cloud AI and use heuristics instead — "
+        "they are not on-device-only. Capture events still sync to your LOOM "
+        "cloud backend so Ask and skill stores stay filled. See /legal/privacy."
     )
 
 

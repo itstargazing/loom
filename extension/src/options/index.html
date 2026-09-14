@@ -6,15 +6,18 @@
     <title>LOOM Options</title>
     <link rel="stylesheet" href="../styles/globals.css" />
   </head>
-  <body>
-    <div class="loom-glass loom-glass-bright loom-sheen-tl m-md max-w-lg p-lg">
+  <body class="loom-options">
+    <div class="loom-glass loom-glass-bright loom-sheen-tl max-w-lg p-lg">
       <header class="mb-lg">
         <h1 class="font-display text-lg font-semibold tracking-tight">LOOM sync</h1>
         <p class="mt-1 text-sm text-text-secondary">
-          Point the extension at your API and paste the bearer token for
-          <em>your</em> account. For Clerk, copy a session JWT from the dashboard
-          Account page (or mint one while signed in). Local stub auth can use
-          <span class="loom-mono">loom-dev-token</span>.
+          Prefer signing in on the dashboard and clicking <strong>Sync now</strong>
+          — that passes your Clerk session for one sync without pasting a token.
+          Optionally paste a JWT below for background sync when the dashboard is
+          closed. See
+          <a class="underline" href="https://localhost:3000/legal/privacy" id="privacy-link"
+            >Privacy Policy</a
+          >.
         </p>
       </header>
 
@@ -30,19 +33,36 @@
             required
           />
         </label>
+        <p id="url-hint" class="text-xs text-text-secondary"></p>
         <label class="flex flex-col gap-xs text-sm">
-          Auth bearer token
+          Auth bearer token (optional)
           <input
             id="auth-token"
             class="loom-input"
             type="password"
-            placeholder="Paste your token"
+            placeholder="Optional — dashboard Sync now preferred"
             autocomplete="off"
           />
         </label>
         <p id="token-hint" class="text-xs text-text-secondary"></p>
+        <label class="flex flex-col gap-xs text-sm">
+          Extra dashboard origins
+          <textarea
+            id="bridge-origins"
+            class="loom-input"
+            rows="2"
+            placeholder="https://your-app.vercel.app"
+          ></textarea>
+        </label>
+        <p class="text-xs text-text-secondary">
+          localhost / 127.0.0.1 are always allowed. Add hosted dashboard URLs
+          (one per line) so Sync now can reach the extension.
+        </p>
         <div class="flex items-center gap-sm">
           <button type="submit" class="loom-btn">Save</button>
+          <button type="button" id="test-api" class="loom-btn loom-btn-secondary">
+            Test API
+          </button>
           <button type="button" id="clear-token" class="loom-btn loom-btn-secondary">
             Clear token
           </button>

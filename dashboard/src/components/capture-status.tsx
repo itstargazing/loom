@@ -1,8 +1,10 @@
 "use client";
 
+import { useAuth } from "@clerk/nextjs";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
+import { isClerkConfigured } from "@/lib/auth-mode";
 import { formatCount, formatRelative } from "@/lib/format";
 import {
   ExtensionUnavailableError,
@@ -22,6 +24,8 @@ type State =
   | { phase: "ready"; status: BridgeSyncStatus }
   | { phase: "error"; message: string };
 
+type TokenGetter = () => Promise<string | null>;
+
 function describeOutcome(outcome: BridgeSyncOutcome): string {
   switch (outcome.status) {
     case "synced":
@@ -33,7 +37,9 @@ function describeOutcome(outcome: BridgeSyncOutcome): string {
     case "backoff":
       return `Backing off for ${Math.ceil(outcome.retryInMs / 1000)}s.`;
     case "failed":
-      return `Failed: ${outcome.error}`;
+      return outcome.error.includes("401") || outcome.error.includes("403")
+        ? "API rejected the token. Stay signed in, or paste a Clerk JWT in extension Options."
+        : `Failed: ${outcome.error}`;
   }
 }
 
@@ -48,14 +54,7 @@ function queueLabel(status: BridgeSyncStatus): string {
   return `${formatCount(status.queued)} queued`;
 }
 
-/**
- * Live view of the extension's outbound queue, plus the manual sync trigger.
- *
- * A successful sync refreshes the server components on the page so the new
- * events show up without a reload — though classification runs asynchronously,
- * so the very newest events may take another moment to appear.
- */
-export function CaptureStatus() {
+function CaptureStatusImpl({ getToken }: { getToken: TokenGetter }) {
   const router = useRouter();
   const [state, setState] = useState<State>({ phase: "checking" });
   const [message, setMessage] = useState<string | null>(null);
@@ -99,7 +98,8 @@ export function CaptureStatus() {
     setSyncing(true);
     setMessage(null);
     try {
-      const outcome = await triggerSync();
+      const authToken = (await getToken()) ?? undefined;
+      const outcome = await triggerSync(authToken);
       setMessage(describeOutcome(outcome));
       await refreshStatus();
       if (outcome.status === "synced") startRefresh(() => router.refresh());
@@ -194,4 +194,21 @@ export function CaptureStatus() {
       {message ? <p className="text-xs text-text-secondary">{message}</p> : null}
     </div>
   );
+}
+
+function CaptureStatusClerk() {
+  const { getToken } = useAuth();
+  return <CaptureStatusImpl getToken={() => getToken()} />;
+}
+
+/**
+ * Live view of the extension's outbound queue, plus the manual sync trigger.
+ *
+ * A successful sync refreshes the server components on the page so the new
+ * events show up without a reload — though classification runs asynchronously,
+ * so the very newest events may take another moment to appear.
+ */
+export function CaptureStatus() {
+  if (isClerkConfigured()) return <CaptureStatusClerk />;
+  return <CaptureStatusImpl getToken={async () => null} />;
 }

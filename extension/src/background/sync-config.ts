@@ -4,6 +4,10 @@
  * Read from chrome.storage.sync so a deployed backend can be pointed at without
  * a rebuild. Paste your own session/JWT token here — do not ship a shared
  * production credential in the default build.
+ *
+ * Store / production builds can bake defaults via Vite env:
+ *   VITE_LOOM_API_BASE_URL
+ *   (dashboard origin is handled in bridge/origins.ts)
  */
 
 export interface SyncConfig {
@@ -11,10 +15,21 @@ export interface SyncConfig {
   authToken: string;
 }
 
+function bakedApiBaseUrl(): string {
+  try {
+    const value = (import.meta as ImportMeta & { env?: Record<string, string> }).env
+      ?.VITE_LOOM_API_BASE_URL;
+    return typeof value === "string" ? value.trim() : "";
+  } catch {
+    return "";
+  }
+}
+
 export const DEFAULT_SYNC_CONFIG: SyncConfig = {
-  apiBaseUrl: "http://localhost:8000",
+  apiBaseUrl: bakedApiBaseUrl() || "http://localhost:8000",
   // Empty by default so a shared release build does not impersonate one user.
-  // Local stub: paste loom-dev-token (or a Clerk JWT) in the options page.
+  // Prefer Sync now from the signed-in dashboard (passes Clerk JWT).
+  // Optional: paste a JWT here for background sync when the dashboard is closed.
   authToken: "",
 };
 

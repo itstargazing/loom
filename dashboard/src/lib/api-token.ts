@@ -12,9 +12,16 @@ export async function resolveApiBearerToken(): Promise<string> {
     if (!session.userId) {
       throw new Error("Not signed in");
     }
-    const token = await session.getToken();
+
+    // Optional Clerk JWT template (Dashboard → JWT Templates). Falls back to
+    // the default session token, which AUTH_MODE=jwt + JWKS should accept.
+    const template = process.env.CLERK_JWT_TEMPLATE?.trim();
+    const token = template
+      ? await session.getToken({ template })
+      : await session.getToken();
+
     if (!token) {
-      throw new Error("Clerk session has no JWT. Sign in again.");
+      throw new Error("Clerk session has no JWT. Sign out and sign in again.");
     }
     return token;
   }

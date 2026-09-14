@@ -118,7 +118,7 @@ export function buildHomeView({
   const unresolved: AttentionItem[] = [];
   if (overview && overview.classification.failed > 0) {
     unresolved.push({
-      href: "/",
+      href: "/overview",
       label: `${overview.classification.failed} classification${
         overview.classification.failed === 1 ? "" : "s"
       } failed`,
@@ -156,7 +156,7 @@ export function buildHomeView({
   const routeNext: AttentionItem[] = [];
   if (overview && overview.classification.awaitingRouting > 0) {
     routeNext.push({
-      href: "/",
+      href: "/overview",
       label: `${overview.classification.awaitingRouting} classified event${
         overview.classification.awaitingRouting === 1 ? "" : "s"
       } waiting to file`,

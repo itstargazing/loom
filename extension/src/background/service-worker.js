@@ -77,7 +77,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             void getSyncStatus().then((status) => sendResponse({ ok: true, status }));
             return true;
         case "sync:now":
-            void syncNow("manual", true).then((outcome) => sendResponse({ ok: true, outcome }));
+            void syncNow("manual", true, message.authToken).then((outcome) => sendResponse({ ok: true, outcome }));
             return true;
         case "pdf:loaded": {
             const { snapshot, form } = message;

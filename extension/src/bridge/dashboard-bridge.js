@@ -6,7 +6,7 @@
  * dashboard origins, so ordinary browsing pages get no bridge at all.
  */
 import { BRIDGE_CHANNEL, BRIDGE_READY_ATTRIBUTE, isBridgeRequest, } from "../../../shared/bridge/dashboard-protocol";
-import { loadBridgeOrigins } from "./origins";
+import { isBridgeOriginAllowed } from "./origins";
 function reply(request, body) {
     const payload = {
         channel: BRIDGE_CHANNEL,
@@ -14,7 +14,6 @@ function reply(request, body) {
         requestId: request.requestId,
         ...body,
     };
-    // Targeted at this page's own origin; the bridge never broadcasts to "*".
     window.postMessage(payload, window.location.origin);
 }
 async function handle(request) {
@@ -23,7 +22,11 @@ async function handle(request) {
         return;
     }
     try {
-        const response = await chrome.runtime.sendMessage({ type: request.type });
+        const message = { type: request.type };
+        if (request.type === "sync:now" && request.payload?.authToken) {
+            message.authToken = request.payload.authToken;
+        }
+        const response = await chrome.runtime.sendMessage(message);
         if (response?.ok !== true) {
             reply(request, { ok: false, error: response?.error ?? "Extension declined the request" });
             return;
@@ -31,18 +34,17 @@ async function handle(request) {
         reply(request, { ok: true, result: response.status ?? response.outcome });
     }
     catch (error) {
-        // Typically "Receiving end does not exist" while the worker restarts.
         const message = error instanceof Error ? error.message : "Extension unreachable";
         reply(request, { ok: false, error: message });
     }
 }
 export async function initDashboardBridge() {
-    const origins = await loadBridgeOrigins();
-    if (!origins.includes(window.location.origin))
+    const origin = window.location.origin;
+    if (!(await isBridgeOriginAllowed(origin))) {
+        console.info("[LOOM] Dashboard bridge skipped — origin not allowlisted:", origin, "(add it under extension Options → Dashboard origins)");
         return;
+    }
     window.addEventListener("message", (event) => {
-        // Only same-page messages: a cross-origin frame must not be able to drive
-        // the bridge just because the top-level page is the dashboard.
         if (event.source !== window)
             return;
         if (event.origin !== window.location.origin)

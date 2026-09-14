@@ -12,6 +12,8 @@ from app.models.capture_event import CaptureEvent
 from app.schemas.capture import CaptureBatchAck, CaptureBatchIn, CaptureEventOut
 from app.services.capture_inline import persist_and_classify_inline
 from app.services.capture_queue import enqueue_capture_events
+from app.services.quotas import assert_capture_quota
+from app.services.rate_limit import limit_capture
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +37,9 @@ async def ingest_events(batch: CaptureBatchIn, user_id: CurrentUserId) -> Captur
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail=f"Batch exceeds {settings.max_events_per_batch} events",
         )
+
+    await limit_capture(user_id)
+    await assert_capture_quota(user_id, len(batch.events))
 
     try:
         queued = await enqueue_capture_events(user_id, batch.events)

@@ -1,0 +1,19 @@
+[tool.ruff]
+target-version = "py312"
+src = ["app", "tests"]
+line-length = 100
+
+[tool.ruff.lint]
+# Keep CI focused on real defects; style nits can land gradually.
+select = ["E", "F"]
+ignore = [
+  "E501",  # line length — handled loosely in this codebase
+  "E402",  # late imports in tests/conftest
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["F401", "F811"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["."]

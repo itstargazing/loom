@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai import TextCompletionRequest, get_ai_client
 from app.models.capture_event import CaptureEvent
 from app.services.embeddings import similar_captures
+from app.services.quotas import assert_ask_quota
 from app.services.rate_limit import limit_llm
 
 
@@ -66,7 +67,8 @@ async def answer_question(session: AsyncSession, user_id: str, question: str) ->
         + "\n\n".join(numbered)
         + "\n\nAnswer the question. Cite sources as [1], [2], …"
     )
-    limit_llm(user_id)
+    await limit_llm(user_id)
+    await assert_ask_quota(user_id)
     completion = await get_ai_client().complete_text(
         TextCompletionRequest(system=SYSTEM, user=prompt, max_output_tokens=800)
     )

@@ -109,7 +109,7 @@ async def reclassify(
 
     Bypasses the queue on purpose: this is the loop used when tuning the prompt.
     """
-    limit_classification(user_id)
+    await limit_classification(user_id)
     loaded = await load_classifiable_event(db, capture_event_id)
     if loaded is None:
         raise HTTPException(

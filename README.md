@@ -573,6 +573,23 @@ This runs two consumers concurrently in one process — capture persistence and 
 
 Under Docker this runs as the `worker` service. Later phases (contradiction watching, listing re-checks, document diffs) add their own consumers alongside these.
 
+## Production & Global GA
+
+For a public soft launch and GA path, see:
+
+- [`docs/production.md`](docs/production.md) — compose prod, Vercel, Clerk JWT, retention, backups
+- [`docs/chrome-web-store.md`](docs/chrome-web-store.md) — extension store packaging
+- [`docs/ga-checklist.md`](docs/ga-checklist.md) — exit criteria
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+curl -fsS http://localhost:8000/ready
+```
+
+CI runs on every PR via [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
+Legal pages: `/legal/privacy`, `/legal/terms`. Account supports export, delete, quotas, and Stripe upgrade when configured.
+
 ## License
 
 Private — all rights reserved.

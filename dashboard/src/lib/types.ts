@@ -318,9 +318,19 @@ export interface Account {
   displayName: string;
   email: string | null;
   authMode: string;
+  plan?: string;
   createdAt: string;
   updatedAt: string;
   sessionNote: string;
+  captureRetentionDays?: number;
+  skillRetentionDays?: number;
+  quotas?: {
+    plan: string;
+    eventsPerDay: number;
+    eventsUsedToday: number;
+    askPerDay: number;
+    askUsedToday: number;
+  } | null;
 }
 
 export interface LogoutResult {

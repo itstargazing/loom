@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,7 +14,9 @@ from app.core.database import get_db
 from app.core.security import CurrentUserId
 from app.models.account import UserAccount
 from app.schemas.auth import AccountOut, AccountPatch, DeleteAccountIn, LogoutOut
+from app.services.account_export import build_account_export, export_as_json_bytes
 from app.services.account_purge import purge_user_data
+from app.services.quotas import quota_status
 from app.services.sanitize import sanitize_plain_text
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -30,6 +33,7 @@ async def _ensure_account(db: AsyncSession, user_id: str) -> UserAccount:
         user_id=user_id,
         display_name=user_id,
         auth_mode=(settings.auth_mode or "stub").strip().lower(),
+        plan="free",
     )
     db.add(account)
     await db.commit()
@@ -49,16 +53,20 @@ def _session_note(mode: str) -> str:
     )
 
 
-def _out(account: UserAccount) -> AccountOut:
+async def _out(db: AsyncSession, account: UserAccount) -> AccountOut:
     mode = (settings.auth_mode or "stub").strip().lower()
     return AccountOut(
         user_id=account.user_id,
         display_name=account.display_name,
         email=account.email,
         auth_mode=mode,
+        plan=account.plan or "free",
         created_at=account.created_at,
         updated_at=account.updated_at,
         session_note=_session_note(mode),
+        capture_retention_days=settings.capture_retention_days,
+        skill_retention_days=settings.skill_retention_days,
+        quotas=await quota_status(account.user_id, db),
     )
 
 
@@ -67,7 +75,23 @@ async def get_me(
     user_id: CurrentUserId,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AccountOut:
-    return _out(await _ensure_account(db, user_id))
+    return await _out(db, await _ensure_account(db, user_id))
+
+
+@router.get("/me/export", summary="Download a JSON export of this account's LOOM data")
+async def export_me(
+    user_id: CurrentUserId,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    payload = await build_account_export(db, user_id)
+    body = export_as_json_bytes(payload)
+    return Response(
+        content=body,
+        media_type="application/json",
+        headers={
+            "Content-Disposition": f'attachment; filename="loom-export-{user_id}.json"',
+        },
+    )
 
 
 @router.patch("/me", response_model=AccountOut, summary="Update account profile")
@@ -85,7 +109,7 @@ async def patch_me(
         account.email = email or None
     await db.commit()
     await db.refresh(account)
-    return _out(account)
+    return await _out(db, account)
 
 
 @router.post("/logout", response_model=LogoutOut, summary="Client logout helper")

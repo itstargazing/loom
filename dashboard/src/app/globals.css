@@ -1,1 +1,54 @@
 @import "../../shared/design-system/globals.css";
+
+/*
+ * Dashboard inherits shared monochrome LOOM tokens.
+ * No hue overrides — keep charcoal / off-white only.
+ */
+
+/* Auth route — minimal progress line */
+.auth-load-mark {
+  animation: auth-mark-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.auth-load-track {
+  position: relative;
+  height: 1px;
+  width: 100%;
+  overflow: hidden;
+  background: rgba(242, 240, 236, 0.12);
+}
+
+.auth-load-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: #f2f0ec;
+  animation: auth-bar-sweep 1.1s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+}
+
+@keyframes auth-mark-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes auth-bar-sweep {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-load-mark,
+  .auth-load-bar {
+    animation: none;
+  }
+}

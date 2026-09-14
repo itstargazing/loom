@@ -8,7 +8,7 @@ export default function NotFound() {
         That page does not exist. Pick a skill from the sidebar, or head back to
         the overview.
       </p>
-      <Link href="/" className="loom-btn self-start">
+      <Link href="/overview" className="loom-btn self-start">
         Overview
       </Link>
     </div>

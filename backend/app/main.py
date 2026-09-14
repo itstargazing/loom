@@ -17,6 +17,7 @@ from app.routers import (
     ask,
     auth,
     auto_attach,
+    billing,
     briefs,
     capture,
     classifications,
@@ -88,6 +89,7 @@ app.include_router(live_doc_diff.router)
 app.include_router(auto_attach.router)
 app.include_router(privacy.router)
 app.include_router(overview.router)
+app.include_router(billing.router)
 
 
 @app.get("/")

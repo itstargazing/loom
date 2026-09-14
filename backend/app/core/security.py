@@ -38,12 +38,32 @@ def _jwks() -> PyJWKClient | None:
     return _jwks_client
 
 
+def _issuer_ok(token_iss: object) -> bool:
+    expected = (settings.jwt_issuer or "").strip().rstrip("/")
+    if not expected:
+        return True
+    if not isinstance(token_iss, str) or not token_iss.strip():
+        return False
+    actual = token_iss.strip().rstrip("/")
+    return actual == expected or actual.startswith(expected + "/")
+
+
 def decode_user_id_from_jwt(token: str) -> str:
-    """Return the JWT ``sub`` claim after signature verification."""
-    options = {"require": ["sub", "exp"]}
-    audience = settings.jwt_audience or None
-    issuer = settings.jwt_issuer or None
+    """Return the JWT ``sub`` claim after signature verification.
+
+    Clerk session tokens are RS256 via JWKS. They often omit ``aud``, so we only
+    verify audience when ``JWT_AUDIENCE`` is set. Issuer is checked loosely
+    (trailing slash / path tolerant).
+    """
+    audience = (settings.jwt_audience or "").strip() or None
     algorithms = _algorithms()
+    options = {
+        "require": ["sub", "exp"],
+        # Clerk session JWTs typically have no aud; only enforce when configured.
+        "verify_aud": bool(audience),
+        # We validate iss ourselves so trailing-slash / host variants still work.
+        "verify_iss": False,
+    }
 
     try:
         jwks = _jwks()
@@ -54,8 +74,8 @@ def decode_user_id_from_jwt(token: str) -> str:
                 signing_key,
                 algorithms=algorithms or ["RS256"],
                 audience=audience,
-                issuer=issuer,
                 options=options,
+                leeway=60,
             )
         else:
             payload = jwt.decode(
@@ -63,15 +83,28 @@ def decode_user_id_from_jwt(token: str) -> str:
                 settings.jwt_secret,
                 algorithms=algorithms or ["HS256"],
                 audience=audience,
-                issuer=issuer,
                 options=options,
+                leeway=60,
             )
     except jwt.PyJWTError as error:
+        logger.warning("JWT verification failed: %s", error)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired authentication token",
             headers={"WWW-Authenticate": "Bearer"},
         ) from error
+
+    if not _issuer_ok(payload.get("iss")):
+        logger.warning(
+            "JWT issuer mismatch: token iss=%r expected=%r",
+            payload.get("iss"),
+            settings.jwt_issuer,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token issuer is not trusted",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     subject = payload.get("sub")
     if not isinstance(subject, str) or not subject.strip():

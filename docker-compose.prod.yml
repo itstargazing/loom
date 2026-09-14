@@ -1,0 +1,154 @@
+# Production stack — no source mounts, no reload, stub auth/AI refused by the API.
+#
+# Required env (set in a root `.env` or the host environment):
+#   POSTGRES_PASSWORD, JWT_JWKS_URL, JWT_ISSUER, CORS_ORIGINS,
+#   AI_PROVIDER, AI_API_KEY (or ANTHROPIC_*), EMBEDDING_PROVIDER, EMBEDDING_API_KEY,
+#   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY, LOOM_API_URL (public API for Next)
+#
+# Optional: SENTRY_DSN, STRIPE_*, CAPTURE_RETENTION_DAYS, JWT_AUDIENCE
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: loom
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: loom
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U loom -d loom"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://loom:${POSTGRES_PASSWORD}@postgres:5432/loom
+      REDIS_URL: redis://redis:6379/0
+      CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS to your dashboard origin}
+      ENVIRONMENT: production
+      AUTH_MODE: jwt
+      JWT_ALGORITHMS: ${JWT_ALGORITHMS:-RS256}
+      JWT_JWKS_URL: ${JWT_JWKS_URL:?Set JWT_JWKS_URL}
+      JWT_ISSUER: ${JWT_ISSUER:?Set JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-}
+      JWT_SECRET: ${JWT_SECRET:-}
+      AI_PROVIDER: ${AI_PROVIDER:?Set AI_PROVIDER to claude or openai}
+      AI_API_KEY: ${AI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-5}
+      AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.openai.com/v1}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:?Set EMBEDDING_PROVIDER}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:?Set EMBEDDING_API_KEY}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.1}
+      CAPTURE_RETENTION_DAYS: ${CAPTURE_RETENTION_DAYS:-365}
+      SKILL_RETENTION_DAYS: ${SKILL_RETENTION_DAYS:-365}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_PRO: ${STRIPE_PRICE_PRO:-}
+      BILLING_SUCCESS_URL: ${BILLING_SUCCESS_URL:-}
+      BILLING_CANCEL_URL: ${BILLING_CANCEL_URL:-}
+      FORM_STORAGE_DIR: /app/.data/forms
+    volumes:
+      - form_data:/app/.data/forms
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://loom:${POSTGRES_PASSWORD}@postgres:5432/loom
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: production
+      AUTH_MODE: jwt
+      AI_PROVIDER: ${AI_PROVIDER}
+      AI_API_KEY: ${AI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-5}
+      AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.openai.com/v1}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      CAPTURE_RETENTION_DAYS: ${CAPTURE_RETENTION_DAYS:-365}
+      SKILL_RETENTION_DAYS: ${SKILL_RETENTION_DAYS:-365}
+      FORM_STORAGE_DIR: /app/.data/forms
+    volumes:
+      - form_data:/app/.data/forms
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: python -m app.worker
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: ./dashboard/Dockerfile
+      args:
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:?Set NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+        NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+        NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+    ports:
+      - "${DASHBOARD_PORT:-3000}:3000"
+    environment:
+      LOOM_API_URL: ${LOOM_API_URL:-http://backend:8000}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?Set CLERK_SECRET_KEY}
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+      NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: /overview
+      NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: /overview
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+      NODE_ENV: production
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  form_data:

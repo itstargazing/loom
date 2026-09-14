@@ -92,7 +92,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true;
 
     case "sync:now":
-      void syncNow("manual", true).then((outcome) => sendResponse({ ok: true, outcome }));
+      void syncNow("manual", true, message.authToken).then((outcome) =>
+        sendResponse({ ok: true, outcome }),
+      );
       return true;
 
     case "pdf:loaded": {

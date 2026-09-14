@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { BrandLogo } from "@/components/brand-logo";
 import { EXTRA_SKILL_LINKS, SKILL_VIEWS } from "@/lib/skills";
 import { SidebarAuth } from "@/components/sidebar-auth";
 import { isClerkConfigured } from "@/lib/auth-mode";
@@ -28,7 +29,7 @@ function NavLink({ href, label }: { href: string; label: string }) {
 }
 
 const CORE_LINKS = [
-  { href: "/", label: "Overview" },
+  { href: "/overview", label: "Overview" },
   { href: "/digest", label: "Digest" },
   { href: "/ask", label: "Ask" },
   { href: "/trail", label: "Trail" },
@@ -53,10 +54,8 @@ export function Sidebar() {
         className="loom-glass loom-sheen-tl mx-md mt-md flex flex-col gap-sm p-md md:hidden"
       >
         <div className="flex items-center justify-between gap-md">
-          <Link href="/">
-            <span className="loom-display font-display text-lg font-semibold tracking-tight">
-              LOOM
-            </span>
+          <Link href="/overview" aria-label="LOOM overview">
+            <BrandLogo size="sm" />
           </Link>
           <span className="font-mono text-[10px] tracking-[0.18em] text-text-faint">
             Capture · Classify · Route
@@ -70,7 +69,7 @@ export function Sidebar() {
             <NavLink key={link.href} href={link.href} label={link.label} />
           ))}
           <NavLink href="/account" label="Account" />
-          <NavLink href="/privacy" label="Local-only" />
+          <NavLink href="/privacy" label="Local-only*" />
           <NavLink href="/style-guide" label="Style guide" />
         </div>
         {isClerkConfigured() ? (
@@ -84,11 +83,9 @@ export function Sidebar() {
         aria-label="Skills"
         className="loom-glass loom-sheen-tl sticky top-lg m-lg hidden h-[calc(100vh-48px)] w-56 shrink-0 flex-col gap-lg p-lg md:flex"
       >
-        <Link href="/" className="px-3">
-          <span className="loom-display font-display text-lg font-semibold tracking-tight">
-            LOOM
-          </span>
-          <span className="mt-0.5 block font-mono text-[10px] tracking-[0.18em] text-text-faint">
+        <Link href="/overview" className="px-1" aria-label="LOOM overview">
+          <BrandLogo size="md" />
+          <span className="mt-1 block font-mono text-[10px] tracking-[0.18em] text-text-faint">
             Capture · Classify · Route
           </span>
         </Link>
@@ -108,7 +105,7 @@ export function Sidebar() {
 
         <div className="mt-auto flex flex-col gap-xs">
           <NavLink href="/account" label="Account" />
-          <NavLink href="/privacy" label="Local-only" />
+          <NavLink href="/privacy" label="Local-only*" />
           <NavLink href="/style-guide" label="Style guide" />
           {isClerkConfigured() ? <SidebarAuth /> : null}
         </div>

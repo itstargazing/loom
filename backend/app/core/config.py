@@ -48,8 +48,25 @@ class Settings(BaseSettings):
     #  AI path). The background worker is bounded separately by batch size.
     classification_rate_limit_per_minute: int = 30
     llm_rate_limit_per_minute: int = 20
+    #  Caps extension capture ingest batches per user (Redis sliding window).
+    capture_rate_limit_per_minute: int = 120
+    #  Free-tier daily quotas (Pro lifts these via plan fields).
+    free_events_per_day: int = 2_000
+    free_ask_per_day: int = 50
+    pro_events_per_day: int = 50_000
+    pro_ask_per_day: int = 2_000
     #  Below this, a classification is held for digest review instead of routed.
     classification_auto_route_min_confidence: float = 0.5
+    #  Retention (worker purge). 0 disables automatic purge for that store.
+    capture_retention_days: int = 365
+    skill_retention_days: int = 365
+    retention_purge_interval_seconds: float = 3_600.0
+    #  Stripe billing (optional until GA).
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_pro: str = ""
+    billing_success_url: str = ""
+    billing_cancel_url: str = ""
 
     # --- Observability ---------------------------------------------------
     #  Optional. When set, errors are reported to Sentry.

@@ -3,12 +3,20 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { isClerkConfigured } from "@/lib/auth-mode";
+import { clerkAppearance } from "@/lib/clerk-appearance";
 
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LOOM Dashboard",
-  description: "View captured and compiled output from the LOOM pipeline.",
+  title: {
+    default: "LOOM",
+    template: "%s — LOOM",
+  },
+  description: "The memory layer for your browser.",
+  icons: {
+    icon: "/brand/loom-mark-flat.png?v=horn-1",
+    apple: "/brand/loom-mark-flat.png?v=horn-1",
+  },
 };
 
 function Providers({ children }: { children: ReactNode }) {
@@ -17,8 +25,9 @@ function Providers({ children }: { children: ReactNode }) {
   }
   return (
     <ClerkProvider
-      signInFallbackRedirectUrl="/"
-      signUpFallbackRedirectUrl="/"
+      appearance={clerkAppearance}
+      signInFallbackRedirectUrl="/overview"
+      signUpFallbackRedirectUrl="/overview"
     >
       {children}
     </ClerkProvider>

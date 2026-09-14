@@ -224,7 +224,18 @@ def test_user_accounts_table_matches_model():
         "display_name",
         "email",
         "auth_mode",
+        "plan",
+        "stripe_customer_id",
+        "stripe_subscription_id",
         "created_at",
         "updated_at",
         "notes",
     } <= model_columns("user_accounts")
+
+
+billing_later = load_migration("0012_billing_plan.py")
+
+
+def test_billing_plan_migration_chain():
+    assert billing_later.revision == "0012_billing_plan"
+    assert billing_later.down_revision == "0011_breakthrough"

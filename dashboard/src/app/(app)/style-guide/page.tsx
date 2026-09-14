@@ -37,17 +37,17 @@ export default function StyleGuidePage() {
     <div className="mx-auto max-w-[920px]">
       <header className="mb-8">
         <Link
-          href="/"
+          href="/overview"
           className="font-mono text-xs text-text-secondary transition-colors duration-fast hover:text-text-primary"
         >
           ← Back to dashboard
         </Link>
-        <h1 className="loom-display font-display mt-4 text-2xl font-semibold tracking-tight">
-          LOOM Style Guide
+        <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight">
+          <span className="loom-wordmark">LOOM</span> Style Guide
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-text-secondary">
-          Shared liquid-glass tokens for the dashboard and extension. Monochrome
-          only — no hue in accents, status, or motion.
+          Quiet charcoal stage — monochrome only. Color used as type contrast,
+          not as wallpaper.
         </p>
       </header>
 

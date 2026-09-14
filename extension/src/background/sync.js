@@ -17,15 +17,23 @@ function backoffFor(failureCount) {
     return Math.round(exponential + jitter);
 }
 let running = false;
-async function sendBatch(events) {
+async function sendBatch(events, authTokenOverride) {
     const config = await loadSyncConfig();
+    const authToken = authTokenOverride?.trim() || config.authToken;
+    if (!authToken) {
+        return {
+            ok: false,
+            permanent: true,
+            error: "No auth token. Sign in on the dashboard and click Sync now, or paste a JWT in extension Options.",
+        };
+    }
     let response;
     try {
         response = await fetch(`${config.apiBaseUrl}/api/capture/events`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${config.authToken}`,
+                Authorization: `Bearer ${authToken}`,
             },
             body: JSON.stringify({ events }),
         });
@@ -70,8 +78,9 @@ function onFailure(error, retryInMs) {
  * Drain the queue to the backend.
  *
  * `force` skips the backoff window and is only used by the manual sync button.
+ * `authTokenOverride` lets the signed-in dashboard supply a Clerk JWT for this run.
  */
-export async function syncNow(reason, force = false) {
+export async function syncNow(reason, force = false, authTokenOverride) {
     if (running)
         return { status: "busy" };
     const state = await readSyncState();
@@ -86,7 +95,7 @@ export async function syncNow(reason, force = false) {
             const batch = await peekBatch(BATCH_SIZE);
             if (batch.length === 0)
                 break;
-            const result = await sendBatch(batch);
+            const result = await sendBatch(batch, authTokenOverride);
             if (result.ok) {
                 await removeEvents(new Set(batch.map((event) => event.id)));
                 sent += batch.length;

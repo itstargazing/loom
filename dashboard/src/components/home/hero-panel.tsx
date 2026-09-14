@@ -17,7 +17,7 @@ export function HeroPanel({
           <span className="loom-badge w-fit">
             <span
               aria-hidden="true"
-              className="h-1.5 w-1.5 rounded-pill bg-[var(--text)]"
+              className="h-1.5 w-1.5 rounded-pill bg-text-primary"
             />
             Welcome back
           </span>

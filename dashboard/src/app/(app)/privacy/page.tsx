@@ -14,8 +14,8 @@ export default async function PrivacyPage() {
   return (
     <div className="flex flex-col gap-lg">
       <PageHeader
-        title="Local-only mode"
-        description="Sensitive domains skip cloud AI and classify with heuristics only. This may be less accurate than the cloud model — that tradeoff is intentional and visible."
+        title="Local-only domains"
+        description="These domains skip cloud AI and use heuristics instead. Events still sync to your LOOM cloud backend — this is not on-device-only storage. See Privacy Policy for details."
       />
 
       {!settings.ok ? (

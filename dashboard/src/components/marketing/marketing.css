@@ -1,0 +1,358 @@
+/* LOOM marketing — editorial / laboratory identity */
+
+.marketing-root {
+  --mk-bg: #050505;
+  --mk-elevated: #0a0a0a;
+  --mk-panel: #0c0c0c;
+  --mk-text: #f2f0ec;
+  --mk-dim: #9a988f;
+  --mk-faint: #5c5a54;
+  --mk-line: rgba(242, 240, 236, 0.12);
+  --mk-line-strong: rgba(242, 240, 236, 0.28);
+  --mk-accent: #f2f0ec;
+  --mk-accent-soft: rgba(242, 240, 236, 0.14);
+  --mk-display: var(--font-loom-display), "Space Grotesk", system-ui, sans-serif;
+  --mk-mono: var(--font-loom-mono), "JetBrains Mono", ui-monospace, monospace;
+  --mk-sans: var(--font-loom-sans), system-ui, sans-serif;
+
+  position: relative;
+  min-height: 100vh;
+  color: var(--mk-text);
+  background: var(--mk-bg);
+  font-family: var(--mk-sans);
+  overflow-x: clip;
+}
+
+.marketing-root * {
+  box-sizing: border-box;
+}
+
+.mk-wrap {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 1240px;
+  padding-inline: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .mk-wrap {
+    padding-inline: 2.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .mk-wrap {
+    padding-inline: 3rem;
+  }
+}
+
+.mk-label {
+  font-family: var(--mk-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--mk-faint);
+}
+
+.mk-display,
+.mk-font-display {
+  font-family: var(--mk-display);
+}
+
+.mk-display {
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 0.96;
+  color: var(--mk-text);
+}
+
+.mk-body {
+  font-family: var(--mk-sans);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: var(--mk-dim);
+  max-width: 36rem;
+}
+
+.mk-hairline {
+  height: 1px;
+  background: var(--mk-line);
+  border: 0;
+}
+
+.mk-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 0.9rem 1.35rem;
+  font-family: var(--mk-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition:
+    color 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
+  will-change: transform;
+}
+
+.mk-btn-primary {
+  color: #050505;
+  background: var(--mk-text);
+  border-color: var(--mk-text);
+}
+
+.mk-btn-primary:hover {
+  background: #fff;
+}
+
+.mk-btn-primary:focus-visible {
+  outline: 2px solid var(--mk-accent);
+  outline-offset: 3px;
+}
+
+.mk-btn-ghost {
+  color: var(--mk-text);
+  background: transparent;
+  border-color: var(--mk-line-strong);
+}
+
+.mk-btn-ghost:hover {
+  border-color: var(--mk-text);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.mk-btn-ghost:focus-visible {
+  outline: 2px solid var(--mk-accent);
+  outline-offset: 3px;
+}
+
+.mk-accent {
+  color: var(--mk-accent);
+}
+
+.mk-rule-accent {
+  width: 2.5rem;
+  height: 1px;
+  background: var(--mk-accent);
+}
+
+/* Product stage — not a rounded SaaS card */
+.mk-stage {
+  position: relative;
+  border: 1px solid var(--mk-line);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 40%),
+    var(--mk-panel);
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.45);
+}
+
+.mk-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 70%);
+}
+
+.mk-nav-link {
+  position: relative;
+  font-size: 0.8125rem;
+  color: var(--mk-dim);
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.mk-nav-link:hover,
+.mk-nav-link[data-active="true"] {
+  color: var(--mk-text);
+}
+
+.mk-nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -0.35rem;
+  width: 100%;
+  height: 1px;
+  background: var(--mk-accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 220ms ease;
+}
+
+.mk-nav-link:hover::after,
+.mk-nav-link[data-active="true"]::after {
+  transform: scaleX(1);
+}
+
+.mk-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 10000;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 999px;
+  background: var(--mk-text);
+  pointer-events: none;
+  mix-blend-mode: difference;
+  transition:
+    width 180ms ease,
+    height 180ms ease,
+    margin 180ms ease,
+    opacity 180ms ease,
+    background-color 180ms ease;
+  will-change: transform;
+}
+
+.mk-cursor[data-state="hover"] {
+  width: 42px;
+  height: 42px;
+  margin: -21px 0 0 -21px;
+  background: transparent;
+  border: 1px solid var(--mk-text);
+  mix-blend-mode: normal;
+}
+
+.mk-cursor[data-state="explore"] {
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  border-radius: 0;
+  border: 1px solid var(--mk-line-strong);
+  background: rgba(5, 5, 5, 0.85);
+  color: var(--mk-text);
+  font-family: var(--mk-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.18em;
+  mix-blend-mode: normal;
+}
+
+.mk-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  height: 1px;
+  width: 100%;
+  transform-origin: left center;
+  background: var(--mk-accent);
+  pointer-events: none;
+}
+
+html.marketing-active,
+html.marketing-active body {
+  background: #050505 !important;
+  background-image: none !important;
+  cursor: none;
+}
+
+html.marketing-active.mk-touch,
+html.marketing-active.mk-touch body,
+html.marketing-active.mk-reduced,
+html.marketing-active.mk-reduced body {
+  cursor: auto;
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+@media (max-width: 767px) {
+  html.marketing-active,
+  html.marketing-active body {
+    cursor: auto;
+  }
+
+  .mk-cursor {
+    display: none !important;
+  }
+}
+
+.mk-vanta canvas {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+}
+
+.mk-signal-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--mk-accent);
+  box-shadow: 0 0 0 0 rgba(242, 240, 236, 0.55);
+  animation: mk-signal-pulse 1.8s ease-out infinite;
+}
+
+/* Hero-only light decode — keep display font, no flicker thrash */
+.mk-pixel-hero {
+  font-variant-ligatures: none;
+}
+
+.mk-pixel-hero--live {
+  opacity: 0.92;
+}
+
+@keyframes mk-signal-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(242, 240, 236, 0.5);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px rgba(242, 240, 236, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(242, 240, 236, 0);
+  }
+}
+
+.mk-signal {
+  transition:
+    border-color 200ms ease,
+    background-color 200ms ease,
+    opacity 200ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Only kill looping decorative CSS — Framer/JS motion still respects reduced via hooks */
+  .mk-signal-dot {
+    animation: none !important;
+    box-shadow: none;
+  }
+
+  .mk-pixel-hero--live {
+    opacity: 1;
+  }
+
+  .mk-cursor {
+    display: none !important;
+  }
+
+  html.marketing-active,
+  html.marketing-active body {
+    cursor: auto;
+  }
+}

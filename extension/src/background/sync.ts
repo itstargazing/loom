@@ -49,8 +49,21 @@ interface SendResult {
   error?: string;
 }
 
-async function sendBatch(events: CaptureEvent[]): Promise<SendResult> {
+async function sendBatch(
+  events: CaptureEvent[],
+  authTokenOverride?: string,
+): Promise<SendResult> {
   const config = await loadSyncConfig();
+  const authToken = authTokenOverride?.trim() || config.authToken;
+
+  if (!authToken) {
+    return {
+      ok: false,
+      permanent: true,
+      error:
+        "No auth token. Sign in on the dashboard and click Sync now, or paste a JWT in extension Options.",
+    };
+  }
 
   let response: Response;
   try {
@@ -58,7 +71,7 @@ async function sendBatch(events: CaptureEvent[]): Promise<SendResult> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${config.authToken}`,
+        Authorization: `Bearer ${authToken}`,
       },
       body: JSON.stringify({ events }),
     });
@@ -108,8 +121,13 @@ function onFailure(error: string, retryInMs: number) {
  * Drain the queue to the backend.
  *
  * `force` skips the backoff window and is only used by the manual sync button.
+ * `authTokenOverride` lets the signed-in dashboard supply a Clerk JWT for this run.
  */
-export async function syncNow(reason: string, force = false): Promise<SyncOutcome> {
+export async function syncNow(
+  reason: string,
+  force = false,
+  authTokenOverride?: string,
+): Promise<SyncOutcome> {
   if (running) return { status: "busy" };
 
   const state = await readSyncState();
@@ -126,7 +144,7 @@ export async function syncNow(reason: string, force = false): Promise<SyncOutcom
       const batch = await peekBatch(BATCH_SIZE);
       if (batch.length === 0) break;
 
-      const result = await sendBatch(batch);
+      const result = await sendBatch(batch, authTokenOverride);
 
       if (result.ok) {
         await removeEvents(new Set(batch.map((event) => event.id)));

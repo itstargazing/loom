@@ -19,7 +19,9 @@ import {
 export type { BridgeSyncOutcome, BridgeSyncStatus };
 
 /** The content script answers immediately; a sync round trip does not. */
-const PING_TIMEOUT_MS = 600;
+const PING_TIMEOUT_MS = 1_500;
+/** Wait for document_idle injection before declaring the bridge missing. */
+const DETECT_GRACE_MS = 2_000;
 const REQUEST_TIMEOUT_MS = 30_000;
 
 export class ExtensionUnavailableError extends Error {
@@ -29,7 +31,11 @@ export class ExtensionUnavailableError extends Error {
   }
 }
 
-function request<T>(type: BridgeRequestType, timeoutMs: number): Promise<T> {
+function request<T>(
+  type: BridgeRequestType,
+  timeoutMs: number,
+  payload?: BridgeRequest["payload"],
+): Promise<T> {
   const requestId = crypto.randomUUID();
 
   return new Promise<T>((resolve, reject) => {
@@ -55,13 +61,14 @@ function request<T>(type: BridgeRequestType, timeoutMs: number): Promise<T> {
 
     window.addEventListener("message", onMessage);
 
-    const payload: BridgeRequest = {
+    const message: BridgeRequest = {
       channel: BRIDGE_CHANNEL,
       direction: "request",
       requestId,
       type,
+      ...(payload ? { payload } : {}),
     };
-    window.postMessage(payload, window.location.origin);
+    window.postMessage(message, window.location.origin);
   });
 }
 
@@ -75,6 +82,12 @@ function request<T>(type: BridgeRequestType, timeoutMs: number): Promise<T> {
 export async function detectExtension(): Promise<boolean> {
   if (document.documentElement.hasAttribute(BRIDGE_READY_ATTRIBUTE)) return true;
 
+  const deadline = Date.now() + DETECT_GRACE_MS;
+  while (Date.now() < deadline) {
+    if (document.documentElement.hasAttribute(BRIDGE_READY_ATTRIBUTE)) return true;
+    await new Promise((resolve) => window.setTimeout(resolve, 100));
+  }
+
   try {
     await request<{ version: string }>("bridge:ping", PING_TIMEOUT_MS);
     return true;
@@ -87,6 +100,12 @@ export function getSyncStatus(): Promise<BridgeSyncStatus> {
   return request<BridgeSyncStatus>("sync:get-status", REQUEST_TIMEOUT_MS);
 }
 
-export function triggerSync(): Promise<BridgeSyncOutcome> {
-  return request<BridgeSyncOutcome>("sync:now", REQUEST_TIMEOUT_MS);
+/** Push the extension queue. Pass the signed-in dashboard JWT when available. */
+export function triggerSync(authToken?: string): Promise<BridgeSyncOutcome> {
+  const token = authToken?.trim();
+  return request<BridgeSyncOutcome>(
+    "sync:now",
+    REQUEST_TIMEOUT_MS,
+    token ? { authToken: token } : undefined,
+  );
 }

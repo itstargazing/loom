@@ -1,10 +1,19 @@
 @import "../../../shared/design-system/globals.css";
 
-/* Extension popup is one glass panel, ~320px. */
-body {
+/* Popup-only chrome. Options and the PDF viewer share this stylesheet
+   but must not inherit the 320px toolbar sizing. */
+body.loom-popup {
   width: 320px;
   min-height: 200px;
   max-height: 580px;
   overflow-y: auto;
   padding: 8px;
+}
+
+body.loom-options {
+  min-height: 100vh;
+  padding: 24px;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 0%, rgba(255, 255, 255, 0.06), transparent 55%),
+    var(--bg-0);
 }

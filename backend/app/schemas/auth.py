@@ -17,10 +17,14 @@ class AccountOut(BaseModel):
     display_name: str
     email: str | None
     auth_mode: str
+    plan: str = "free"
     created_at: datetime
     updated_at: datetime
     #  Filled by the auth router from the live AUTH_MODE setting.
     session_note: str = ""
+    capture_retention_days: int = 365
+    skill_retention_days: int = 365
+    quotas: dict | None = None
 
 
 class AccountPatch(BaseModel):
